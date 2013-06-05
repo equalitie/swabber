@@ -1,14 +1,20 @@
 #!/usr/bin/env python2
 
-#import iptables
+import iptc
 import daemon
+
+from netfilter.rule import Rule,Match
+from netfilter.table import Table
 
 from sqlalchemy import Column, Integer, String, \
     DateTime, ForeignKey, create_engine
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
 
 Base = declarative_base()
+
+#TODO config option
+# eth+ bans all eth* interfaces
+BAN_INTERFACE = "eth+"
 
 class BannedHost(Base):
     __tablename__ = 'banned'
@@ -43,6 +49,27 @@ class BanEntry(Base):
         self.ipaddress = ipaddress
         self.banstart = banstart
 
+    def ban(self): 
+        table = iptc.Table(iptc.Table.FILTER)
+        chain = iptc.Chain(iptc.Table(iptc.Table.FILTER), "INPUT")
+        rule = iptc.Rule()
+        rule.in_interface = BAN_INTERFACE
+        rule.src = self.ipaddress
+        target = iptc.Target(rule, "DROP")
+        rule.target = target
+        chain.insert_rule(rule)
+
+        return True
+
+    def unban(self): 
+        table = iptc.Table(iptc.Table.FILTER)
+        chain = iptc.Chain(iptc.Table(iptc.Table.TABLE_FILTER), "INPUT")
+        for rule in chain.rules:
+            if rule.src == "%s/255.255.255.255" % self.ipaddress:
+                chain.delete_rule(rule)
+                return True
+        return False
+
     def __repr__(self):
         return "<BanEntry('%s', '%s')>" % (self.ipaddress, 
                                            self.banstart)
@@ -54,10 +81,12 @@ class BanEntry(Base):
    timefinished: datetime
 """
 
-def main(): 
+def createDB():
     engine = create_engine('sqlite:///:memory:', echo=True)
-    Session = sessionmaker(bind=engine)
     Base.metadata.create_all(engine)
+
+def main(): 
+    createDB()
 
 if __name__ == "__main__": 
     main()
