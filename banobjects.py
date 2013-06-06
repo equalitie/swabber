@@ -15,6 +15,8 @@ Base = declarative_base()
 #TODO config option
 # eth+ bans all eth* interfaces
 BAN_INTERFACE = "eth+"
+#TODO make me an option
+DB_CONN = 'sqlite:///:memory:'
 
 class BannedHost(Base):
     __tablename__ = 'banned'
@@ -35,8 +37,8 @@ class BannedHost(Base):
         
     def __repr__(self):
         return "<BannedHost('%s','%s', '%s')>" % (self.ipaddress, 
-                                                        self.firstseen, 
-                                                        self.lastseen)
+                                                  self.firstseen, 
+                                                  self.lastseen)
 
 class BanEntry(Base): 
     __tablename__ = "bantable"
@@ -82,7 +84,7 @@ class BanEntry(Base):
 """
 
 def createDB():
-    engine = create_engine('sqlite:///:memory:', echo=True)
+    engine = create_engine(DB_CONN, echo=True)
     Base.metadata.create_all(engine)
 
 def main(): 
