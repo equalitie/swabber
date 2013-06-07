@@ -65,7 +65,7 @@ class BanEntry(Base):
 
     def unban(self): 
         table = iptc.Table(iptc.Table.FILTER)
-        chain = iptc.Chain(iptc.Table(iptc.Table.TABLE_FILTER), "INPUT")
+        chain = iptc.Chain(iptc.Table(iptc.Table.FILTER), "INPUT")
         for rule in chain.rules:
             if rule.src == "%s/255.255.255.255" % self.ipaddress:
                 chain.delete_rule(rule)
