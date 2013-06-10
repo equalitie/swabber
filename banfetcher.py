@@ -3,6 +3,7 @@ import datetime
 import zmq
 import sys
 import logging
+import threading
 from zmq.eventloop import ioloop, zmqstream
 
 from sqlalchemy import create_engine
@@ -11,22 +12,14 @@ from sqlalchemy.orm import sessionmaker
 import banobjects
 
 #TODO make me an option
-DB_CONN = 'sqlite:///:memory:'
+#DB_CONN = 'mysql://root@127.0.0.1/swabber'
+DB_CONN = 'sqlite:///swabber.db'
+BINDSTRING = "tcp://127.0.0.1:22620"
 
-def main(verbose=False): 
+class BanFetcher(threading.Thread):
 
-    context = zmq.Context()
-    socket = context.socket (zmq.SUB)
-    subscriber = zmqstream.ZMQStream(socket)
-    socket.setsockopt(zmq.SUBSCRIBE, "swabber_bans")
-    socket.connect("tcp://127.0.0.1:22620")
-
-    engine = create_engine(DB_CONN, echo=verbose)
-    Session = sessionmaker(bind=engine)
-    banobjects.Base.metadata.create_all(engine)
- 
-    def subscription(message):
-        session = Session()
+    def subscription(self, message):
+        session = self.Sessionmaker()
         action, ipaddress = message
         if action == "swabber_bans": 
             logging.debug("Received ban for %s", message[1])
@@ -45,7 +38,6 @@ def main(verbose=False):
 
             ban_entry = session.query(banobjects.BanEntry).filter_by(ipaddress=ipaddress).first()
             if not ban_entry: 
-                print session.query(banobjects.BanEntry).all()
                 ban_entry = banobjects.BanEntry(ipaddress, thenow) 
                 logging.info("Created ban for %s at %s. %s", ban_entry.ipaddress,
                              thenow, 
@@ -68,14 +60,31 @@ def main(verbose=False):
             session.add(banned_host)
             session.commit()
         else:
-            print message
+            logging.error("Got an invalid message header: %s", message)
+
+
+    def __init__(self, db_conn, bindstring, verbose=False):
+        self.bindstring = bindstring
+
+        context = zmq.Context()
+        self.socket = context.socket (zmq.SUB)
+        subscriber = zmqstream.ZMQStream(self.socket)
+        self.socket.setsockopt(zmq.SUBSCRIBE, "swabber_bans")
+        self.socket.connect(bindstring)
         
-    subscriber.on_recv(subscription)
-    ioloop.IOLoop.instance().start()
+        engine = create_engine(db_conn, echo=verbose)
+        self.Sessionmaker = sessionmaker(bind=engine)
+
+        threading.Thread.__init__(self)
+
+        subscriber.on_recv(self.subscription)
+
+    def run(self):
+        ioloop.IOLoop.instance().start()
 
 if __name__ == "__main__": 
 
-    verbose = False
+    verbose = True
 
     mainlogger = logging.getLogger()
 
@@ -86,5 +95,5 @@ if __name__ == "__main__":
     ch.setFormatter(formatter)
     mainlogger.addHandler(ch)
 
-    main(verbose)
-                      
+    bfetcher = BanFetcher(DB_CONN, BINDSTRING, verbose)
+    bfetcher.run()

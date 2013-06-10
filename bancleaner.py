@@ -1,5 +1,7 @@
 #!/usr/bin/env python2
 
+import time
+import daemon
 import logging
 import banobjects
 import threading
@@ -17,11 +19,14 @@ BANTIME = 2
 
 class BanCleaner(threading.Thread):
 
-    def __init__(self, db_uri): 
+    def __init__(self, db_uri, bantime): 
         self.db_uri = db_uri
+        self.bantime = bantime
         engine = create_engine(db_uri, echo=True)
         self.Sessionmaker = sessionmaker(bind=engine)
-        self.timelimit = datetime.timedelta(minutes=BANTIME)
+        self.timelimit = datetime.timedelta(minutes=bantime)
+
+        self.running = False
 
     def cleanBans(self):
         session = self.Sessionmaker()
@@ -35,9 +40,22 @@ class BanCleaner(threading.Thread):
         session.commit()
         return True
 
+    def run(self): 
+        self.running = True
+        while self.running:
+            try:
+                self.cleanBans()
+                time.sleep(0.1)
+            except Exception as e: 
+                logging.error("Uncaught exception in cleaner! %s", str(e))
+                self.running = False
+
+        return False
+
 def main():
     b = BanCleaner(DB_CONN)
-    b.cleanBans()
+    b.run()
 
 if __name__ == "__main__": 
-    main()
+    #with daemon.DaemonContext(): 
+    #    main()

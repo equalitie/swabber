@@ -1,57 +1,46 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python
 
-#import iptables
 import daemon
+import optparse
+import yaml
 
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, create_engine
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
+def getConfig(configpath): 
+    config_h = open(configpath)
+    config = yaml.loads(config_h.read())
+    config_h.close()
 
-Base = declarative_base()
+    if "db_conn" not in config: 
+        config["db_conn"] = 'sqlite:///swabber.db'
+    if "bantime" not in config: 
+        # minutes
+        config["bantime"] = 2
+    if "bindstring" not in config:
+        config["bindstring"] = "tcp://127.0.0.1:22620"
 
-class BannedHost(Base):
-    __tablename__ = 'banned'
+    return configpath
+
+def runThreads(configpath, verbose):
+    config = getConfig(configpath)
+
+    cleaner = BanCleaner(config["db_conn"], config["bantime"])
+    banner = BanFetcher(config["db_conn"], config["bindstring"])
+    cleaner.run()
+    logging.debug("Started running cleaner")
+    banner.run()
+    logging.debug("Started running banner")
+
+if __name__ == "__main__":
+    parser = optparse.OptionParser()
+    parser.add_option("-v", "--verbose", dest="verbose",
+                      help="Be verbose in output", action="store_true")
+    parser.add_option("-c", "--config",
+                      action="store", dest="configpath", default="./swabber.yaml",
+                      help="alternate path for configuration file")
     
-    ipaddress = Column(String, primary_key=True)
-    timeseen = Column(DateTime)
-    firstseen = Column(DateTime)
-    lastseen = Column(DateTime)
-    
-    def __init__(self, ipaddress, timeseen, firstseen, lastseen):
-        self.ipaddress = ipaddress
-        self.timeseen = timeseen
-        self.firstseen = firstseen
-        self.lastseen = lastseen
-        
-    def __repr__(self):
-        return "<BannedHost('%s','%s', '%s', '%s')>" % (self.ipaddress, self.timeseen, 
-                                                        self.firstseen, self.lastseen)
+    (options, args) = parser.parse_args()
 
-class BanEntry(Base): 
-    __tablename__ = "bantable"
-
-    banid = Column(Integer, autoincrement=True, primary_key=True)
-    ipaddress = Column(String, ForeignKey("banned.ipaddress"))
-    banstart = Column(DateTime)
-
-    def __init__(self, ipaddress, banstart): 
-        self.ipaddress = ipaddress
-        self.banstart = banstart
-
-    def __repr__(self):
-        return "<BanEntry('%s', '%s')>" % (self.ipaddress, 
-                                           self.banstart)
-
-"""  banhistory(optionally used?):
-   primary key: banID autoincrement
-   foreign key: bannedhosts.ipaddress
-   timestarted: datetime
-   timefinished: datetime
-"""
-
-def main(): 
-    engine = create_engine('sqlite:///:memory:', echo=True)
-    Session = sessionmaker(bind=engine)
-
-if __name__ == "__main__": 
-    main()
+    if not options.verbose:
+        with daemon.DaemonContext():
+            runThreads(options.configpath, options.verbose)
+    else:
+        runThreads(options.configpath, options.verbose)
