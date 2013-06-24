@@ -3,6 +3,8 @@ swabber
 
 Simple pubsub-based IP banning engine
 
+To listen for bans (in the current version - to be removed), run <code>python banfetcher.py</code>
+
 Installation
 ======
 
