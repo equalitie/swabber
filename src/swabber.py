@@ -32,9 +32,11 @@ def runThreads(configpath, verbose):
 if __name__ == "__main__":
     parser = optparse.OptionParser()
     parser.add_option("-v", "--verbose", dest="verbose",
-                      help="Be verbose in output", action="store_true")
+                      help="Be verbose in output, don't daemonise", 
+                      action="store_true")
     parser.add_option("-c", "--config",
-                      action="store", dest="configpath", default="./swabber.yaml",
+                      action="store", dest="configpath", 
+                      default="../conf/swabber.yaml",
                       help="alternate path for configuration file")
     
     (options, args) = parser.parse_args()
