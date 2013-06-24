@@ -3,9 +3,6 @@
 import iptc
 import daemon
 
-from netfilter.rule import Rule,Match
-from netfilter.table import Table
-
 from sqlalchemy import Column, Integer, String, \
     DateTime, ForeignKey, create_engine
 from sqlalchemy.ext.declarative import declarative_base
