@@ -1,4 +1,6 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python
+
+__author__ = "nosmo@nosmo.me"
 
 import iptc
 import daemon
@@ -80,8 +82,8 @@ class BanEntry(Base):
    timefinished: datetime
 """
 
-def createDB():
-    engine = create_engine(DB_CONN, echo=True)
+def createDB(db_conn=DB_CONN):
+    engine = create_engine(db_conn, echo=True)
     Base.metadata.create_all(engine)
 
 def main(): 

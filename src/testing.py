@@ -3,8 +3,8 @@ import datetime
 import commands
 import os
 import tempfile
-from banobjects import BanEntry, createDB
-from bancleaner import BanCleaner
+from swabber import BanEntry, createDB
+from swabber import BanCleaner
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 

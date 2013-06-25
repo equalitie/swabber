@@ -1,12 +1,19 @@
 #!/usr/bin/env python
 
+__author__ = "nosmo@nosmo.me"
+
+from swabber import BanCleaner
+from swabber import BanFetcher
+from swabber import banobjects
+
 import daemon
+import logging
 import optparse
 import yaml
 
 def getConfig(configpath): 
     config_h = open(configpath)
-    config = yaml.loads(config_h.read())
+    config = yaml.load(config_h.read())
     config_h.close()
 
     if "db_conn" not in config: 
@@ -17,17 +24,20 @@ def getConfig(configpath):
     if "bindstring" not in config:
         config["bindstring"] = "tcp://127.0.0.1:22620"
 
-    return configpath
+    return config
 
 def runThreads(configpath, verbose):
     config = getConfig(configpath)
 
+    #TODO initialise DB
+    banobjects.createDB(config["db_conn"])
+
     cleaner = BanCleaner(config["db_conn"], config["bantime"])
     banner = BanFetcher(config["db_conn"], config["bindstring"])
     cleaner.run()
-    logging.debug("Started running cleaner")
+    logging.warning("Started running cleaner")
     banner.run()
-    logging.debug("Started running banner")
+    logging.warning("Started running banner")
 
 if __name__ == "__main__":
     parser = optparse.OptionParser()
@@ -43,6 +53,7 @@ if __name__ == "__main__":
 
     if not options.verbose:
         with daemon.DaemonContext():
+            logging.info("Starting swabber in daemon mode")
             runThreads(options.configpath, options.verbose)
     else:
         runThreads(options.configpath, options.verbose)
