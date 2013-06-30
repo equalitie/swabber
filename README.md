@@ -14,3 +14,4 @@ The following modules must be loaded:
 * iptable_filter
 * ipt_state
 
+Python <= 2.5 will need to also install the json module.
