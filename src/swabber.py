@@ -39,7 +39,7 @@ def runThreads(configpath, verbose):
     banner.run()
     logging.warning("Started running banner")
 
-if __name__ == "__main__":
+def main(): 
     parser = optparse.OptionParser()
     parser.add_option("-v", "--verbose", dest="verbose",
                       help="Be verbose in output, don't daemonise", 
@@ -57,3 +57,6 @@ if __name__ == "__main__":
             runThreads(options.configpath, options.verbose)
     else:
         runThreads(options.configpath, options.verbose)
+
+if __name__ == "__main__":
+    main()
