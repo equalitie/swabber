@@ -17,16 +17,16 @@ setup(
     license = "N(C)",
     keywords = "iptables banning pubsub",
     url = "http://github.com/equalitie/swabber",
-    packages=['src/swabber'],
+    packages=['swabber'],
     long_description=read('README.md'),
     classifiers=[
         "Development Status :: 3 - Alpha",
         "Topic :: Daemons",
         "License :: N(C) License",
         ],
-    entry_points = {
-        'console_scripts': [
-            'swabber = swabber:main']
-        },
-    scripts = ["src/swabber.py"], 
-)
+    scripts = ["swabberd.py"], 
+    data_files=[
+        ('/etc', ["conf/swabber.yaml"]), 
+        ('/etc/init.d/', ["swabberd"])
+        ],
+    )
