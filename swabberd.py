@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2.6
 
 __author__ = "nosmo@nosmo.me"
 
@@ -6,7 +6,10 @@ from swabber import BanCleaner
 from swabber import BanFetcher
 from swabber import banobjects
 
+import sqlalchemy
+
 import daemon
+import lockfile
 import logging
 import optparse
 import yaml
@@ -30,7 +33,11 @@ def runThreads(configpath, verbose):
     config = getConfig(configpath)
 
     #TODO initialise DB
-    banobjects.createDB(config["db_conn"])
+    try:
+        banobjects.createDB(config["db_conn"])
+    except sqlalchemy.exc.OperationalError:
+        logging.error("Couldn't create DB! Is path valid for %s?", config["db_conn"])
+        return False
 
     cleaner = BanCleaner(config["db_conn"], config["bantime"])
     banner = BanFetcher(config["db_conn"], config["bindstring"])
@@ -44,15 +51,16 @@ def main():
     parser.add_option("-v", "--verbose", dest="verbose",
                       help="Be verbose in output, don't daemonise", 
                       action="store_true")
+
     parser.add_option("-c", "--config",
                       action="store", dest="configpath", 
-                      default="../conf/swabber.yaml",
+                      default="/etc/swabber.yaml",
                       help="alternate path for configuration file")
     
     (options, args) = parser.parse_args()
 
     if not options.verbose:
-        with daemon.DaemonContext():
+        with daemon.DaemonContext(pidfile=lockfile.FileLock('/var/run/swabber.pid')):
             logging.info("Starting swabber in daemon mode")
             runThreads(options.configpath, options.verbose)
     else:
