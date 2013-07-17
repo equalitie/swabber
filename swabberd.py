@@ -1,4 +1,4 @@
-#!/usr/bin/env python2.6
+#!/usr/bin/env python
 
 __author__ = "nosmo@nosmo.me"
 
@@ -6,13 +6,14 @@ from swabber import BanCleaner
 from swabber import BanFetcher
 from swabber import banobjects
 
-import sqlalchemy
-
 import daemon
+import sqlalchemy
+import yaml
+
 import lockfile
 import logging
 import optparse
-import yaml
+import sys
 
 def getConfig(configpath): 
     config_h = open(configpath)
@@ -41,10 +42,15 @@ def runThreads(configpath, verbose):
 
     cleaner = BanCleaner(config["db_conn"], config["bantime"])
     banner = BanFetcher(config["db_conn"], config["bindstring"])
-    cleaner.run()
-    logging.warning("Started running cleaner")
-    banner.run()
-    logging.warning("Started running banner")
+    try:
+        cleaner.start()
+        logging.warning("Started running cleaner")
+        banner.start()
+        logging.warning("Started running banner")
+    except Exception as e:
+        logging.error("Swabber exiting on exception %s!", str(e))
+        cleaner.running = False
+        banner.running = False
 
 def main(): 
     parser = optparse.OptionParser()
@@ -64,6 +70,14 @@ def main():
             logging.info("Starting swabber in daemon mode")
             runThreads(options.configpath, options.verbose)
     else:
+        mainlogger = logging.getLogger()
+        
+        logging.basicConfig(level=logging.DEBUG)
+        ch = logging.StreamHandler(sys.stdout)
+        ch.setLevel(logging.DEBUG)
+        formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+        ch.setFormatter(formatter)
+        mainlogger.addHandler(ch)
         runThreads(options.configpath, options.verbose)
 
 if __name__ == "__main__":

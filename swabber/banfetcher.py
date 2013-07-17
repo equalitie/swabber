@@ -19,7 +19,7 @@ import banobjects
 
 #TODO make me an option
 #DB_CONN = 'mysql://root@127.0.0.1/swabber'
-DB_CONN = 'sqlite:///swabber.db'
+DB_CONN = 'sqlite:////tmp/swabber.db'
 BINDSTRING = "tcp://127.0.0.1:22620"
 
 class BanFetcher(threading.Thread):
@@ -27,11 +27,26 @@ class BanFetcher(threading.Thread):
     def subscription(self, message):
         session = self.Sessionmaker()
         action, ipaddress = message
-        if action == "swabber_bans": 
+
+        ipaddress= ipaddress.strip()
+        ipmatch = re.compile("^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$")
+        if not ipmatch.match(ipaddress): 
+            logging.error("Failed to validate IP address %s - rejecting", ipaddress)
+            return False
+
+        if action == "swabber_bans":
+
             logging.debug("Received ban for %s", message[1])
             thenow = datetime.datetime.now()
 
-            banned_host = session.query(banobjects.BannedHost).filter_by(ipaddress=ipaddress).first()
+            try:
+                banned_host = session.query(banobjects.BannedHost).filter_by(ipaddress=ipaddress).first()
+            except Exception as e: 
+                # sorry for the pokemon
+                #TODO catch more gracefully
+                loggging.error("Failed to select host for %s - bad address?", ipaddress)
+                return False
+
             if not banned_host: 
                 banned_host = banobjects.BannedHost(ipaddress, thenow, thenow)
                 logging.info("Created ban for %s at %s", ipaddress, thenow)
@@ -85,8 +100,11 @@ class BanFetcher(threading.Thread):
 
         subscriber.on_recv(self.subscription)
 
+    def stopIt(self): 
+        self.loop.stop()
+
     def run(self):
-        ioloop.IOLoop.instance().start()
+        self.loop = ioloop.IOLoop.instance().start()
 
 if __name__ == "__main__": 
 
@@ -94,6 +112,7 @@ if __name__ == "__main__":
 
     mainlogger = logging.getLogger()
 
+    banobjects.createDB(DB_CONN)
     logging.basicConfig(level=logging.DEBUG)
     ch = logging.StreamHandler(sys.stdout)
     ch.setLevel(logging.DEBUG)
