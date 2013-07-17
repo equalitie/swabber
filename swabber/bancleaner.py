@@ -50,7 +50,7 @@ class BanCleaner(threading.Thread):
         while self.running:
             try:
                 self.cleanBans()
-                time.sleep(0.1)
+                time.sleep(5)
             except Exception as e: 
                 logging.error("Uncaught exception in cleaner! %s", str(e))
                 self.running = False
