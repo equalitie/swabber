@@ -65,7 +65,7 @@ class BanFetcher(threading.Thread):
                              " Host has been seen %d times before." % banned_host.timesbanned if \
                                  banned_host.timesbanned else "")
                 try:
-                    ban_entry.ban()
+                    ban_entry.ban(self.interface)
                 except iptc.IPTCError as e:
                     logging.error("Failed to initialise ban - do we lack permissions?: %s", e)
                     raise SystemExit
@@ -84,8 +84,10 @@ class BanFetcher(threading.Thread):
             logging.error("Got an invalid message header: %s", message)
 
 
-    def __init__(self, db_conn, bindstring, verbose=False):
+    def __init__(self, db_conn, bindstring, 
+                 interface, verbose=False):
         self.bindstring = bindstring
+        self.interface = interface
 
         context = zmq.Context()
         self.socket = context.socket (zmq.SUB)

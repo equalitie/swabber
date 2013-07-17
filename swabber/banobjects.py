@@ -11,10 +11,6 @@ from sqlalchemy.ext.declarative import declarative_base
 
 Base = declarative_base()
 
-#TODO config option
-# eth+ bans all eth* interfaces
-BAN_INTERFACE = "eth+"
-#TODO make me an option
 DB_CONN = 'sqlite:///:memory:'
 
 class BannedHost(Base):
@@ -50,11 +46,11 @@ class BanEntry(Base):
         self.ipaddress = ipaddress
         self.banstart = banstart
 
-    def ban(self): 
+    def ban(self, interface): 
         table = iptc.Table(iptc.Table.FILTER)
         chain = iptc.Chain(iptc.Table(iptc.Table.FILTER), "INPUT")
         rule = iptc.Rule()
-        rule.in_interface = BAN_INTERFACE
+        rule.in_interface = interface
         rule.src = self.ipaddress
         target = iptc.Target(rule, "DROP")
         rule.target = target

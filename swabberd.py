@@ -27,6 +27,8 @@ def getConfig(configpath):
         config["bantime"] = 2
     if "bindstring" not in config:
         config["bindstring"] = "tcp://127.0.0.1:22620"
+    if "interface" not in config:
+        config["interface"] = "eth+"
 
     return config
 
