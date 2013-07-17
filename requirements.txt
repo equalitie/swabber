@@ -2,4 +2,4 @@ python-iptables
 pyzmq
 SQLAlchemy
 daemon
-json
+yaml

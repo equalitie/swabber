@@ -1,9 +1,15 @@
+#!/usr/bin/env python
+
+__author__ = "nosmo@nosmo.me"
+
 import json
 import datetime
 import zmq
 import sys
 import logging
 import threading
+import iptc
+
 from zmq.eventloop import ioloop, zmqstream
 
 from sqlalchemy import create_engine

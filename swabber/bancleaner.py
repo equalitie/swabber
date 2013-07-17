@@ -1,4 +1,6 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python
+
+__author__ = "nosmo@nosmo.me"
 
 import time
 import daemon
@@ -57,5 +59,4 @@ def main():
     b.run()
 
 if __name__ == "__main__": 
-    #with daemon.DaemonContext(): 
-    #    main()
+    main()

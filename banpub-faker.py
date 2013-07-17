@@ -1,3 +1,7 @@
+#!/usr/bin/env python
+
+__author__ = "nosmo@nosmo.me"
+
 import zmq
 from zmq.eventloop import ioloop, zmqstream
 
