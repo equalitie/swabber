@@ -15,7 +15,7 @@ from sqlalchemy.orm import sessionmaker
 
 #TODO make me  options
 #DB_CONN = 'mysql://root@127.0.0.1/swabber'
-DB_CONN = 'sqlite:///swabber.db'
+DB_CONN = 'sqlite:////tmp/swabber.db'
 #minutes
 BANTIME = 2
 
@@ -24,10 +24,10 @@ class BanCleaner(threading.Thread):
     def __init__(self, db_uri, bantime): 
         self.db_uri = db_uri
         self.bantime = bantime
-        engine = create_engine(db_uri, echo=True)
+        engine = create_engine(db_uri, echo=False)
         self.Sessionmaker = sessionmaker(bind=engine)
         self.timelimit = datetime.timedelta(minutes=bantime)
-
+        threading.Thread.__init__(self)
         self.running = False
 
     def cleanBans(self):
@@ -42,6 +42,9 @@ class BanCleaner(threading.Thread):
         session.commit()
         return True
 
+    def stopIt(self):
+        self.running = False
+
     def run(self): 
         self.running = True
         while self.running:
@@ -55,7 +58,8 @@ class BanCleaner(threading.Thread):
         return False
 
 def main():
-    b = BanCleaner(DB_CONN)
+    banobjects.createDB(DB_CONN)
+    b = BanCleaner(DB_CONN, BANTIME)
     b.run()
 
 if __name__ == "__main__": 
