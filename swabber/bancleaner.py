@@ -21,7 +21,7 @@ BANTIME = 2
 
 class BanCleaner(threading.Thread):
 
-    def __init__(self, db_uri, bantime): 
+    def __init__(self, db_uri, bantime, lock): 
         self.db_uri = db_uri
         self.bantime = bantime
         engine = create_engine(db_uri, echo=False)
@@ -30,14 +30,19 @@ class BanCleaner(threading.Thread):
         threading.Thread.__init__(self)
         self.running = False
 
+        self.iptables_lock = lock
+
     def cleanBans(self):
         session = self.Sessionmaker()
 
         ban_entries = session.query(banobjects.BanEntry).all()
+        print "Starting sweep on %d entries" % len(ban_entries)
         for ban in ban_entries:
             if datetime.datetime.now() - ban.banstart > self.timelimit:
                 logging.info("Unbanning %s as the ban has expired", ban.ipaddress)
-                ban.unban()
+                with self.iptables_lock: 
+                    ban.unban()
+                logging.debug("Unbanned %s", ban.ipaddress)
                 session.delete(ban)
         session.commit()
         return True
@@ -53,7 +58,7 @@ class BanCleaner(threading.Thread):
                 time.sleep(5)
             except Exception as e: 
                 logging.error("Uncaught exception in cleaner! %s", str(e))
-                self.running = False
+                #self.running = False
 
         return False
 

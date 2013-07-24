@@ -3,12 +3,14 @@
 __author__ = "nosmo@nosmo.me"
 
 import json
-import datetime
-import zmq
-import sys
-import logging
-import threading
 import iptc
+import zmq
+
+import datetime
+import logging
+import re
+import sys
+import threading
 
 from zmq.eventloop import ioloop, zmqstream
 
@@ -65,7 +67,10 @@ class BanFetcher(threading.Thread):
                              " Host has been seen %d times before." % banned_host.timesbanned if \
                                  banned_host.timesbanned else "")
                 try:
-                    ban_entry.ban(self.interface)
+                    with self.iptables_lock:
+                        logging.debug("About to ban %s on %s", ipaddress, self.interface)
+                        ban_entry.ban(self.interface)
+                        logging.debug("Successfully banned %s", ipaddress)
                 except iptc.IPTCError as e:
                     logging.error("Failed to initialise ban - do we lack permissions?: %s", e)
                     raise SystemExit
@@ -85,7 +90,8 @@ class BanFetcher(threading.Thread):
 
 
     def __init__(self, db_conn, bindstring, 
-                 interface, verbose=False):
+                 interface, lock, 
+                 verbose=False):
         self.bindstring = bindstring
         self.interface = interface
 
@@ -97,6 +103,8 @@ class BanFetcher(threading.Thread):
         
         engine = create_engine(db_conn, echo=verbose)
         self.Sessionmaker = sessionmaker(bind=engine)
+
+        self.iptables_lock = lock
 
         threading.Thread.__init__(self)
 
