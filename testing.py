@@ -16,6 +16,7 @@ from zmq.eventloop import ioloop, zmqstream
 BAN_IP = "10.123.45.67"
 DB_CONN = 'sqlite:///%s/swabber.db' % tempfile.mkdtemp()
 BINDSTRING = "tcp://127.0.0.1:22620"
+INTERFACE = "eth+"
 
 #Defining context outside to avoid attacker using up all FDs
 context   = zmq.Context(1)
@@ -61,7 +62,7 @@ class BanTests(unittest.TestCase):
 
     def testBan(self):
         ban = BanEntry(BAN_IP, datetime.datetime.now())
-        ban.ban()
+        ban.ban(INTERFACE)
         status, output = commands.getstatusoutput("/sbin/iptables -L -n")
         ban.unban()
         self.assertIn(BAN_IP, output, msg="IP address not banned")
@@ -84,7 +85,7 @@ class CleanTests(unittest.TestCase):
         session.add(ban)
         session.commit()
 
-        ban.ban()
+        ban.ban(INTERFACE)
         cleaner = BanCleaner(db_conn, ban_len)
         cleaner.cleanBans()
         

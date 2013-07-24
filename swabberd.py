@@ -10,6 +10,7 @@ import daemon
 import sqlalchemy
 import yaml
 
+import threading
 import lockfile
 import logging
 import optparse
@@ -27,6 +28,8 @@ def getConfig(configpath):
         config["bantime"] = 2
     if "bindstring" not in config:
         config["bindstring"] = "tcp://127.0.0.1:22620"
+    if "interface" not in config:
+        config["interface"] = "eth+"
 
     return config
 
@@ -40,8 +43,11 @@ def runThreads(configpath, verbose):
         logging.error("Couldn't create DB! Is path valid for %s?", config["db_conn"])
         return False
 
-    cleaner = BanCleaner(config["db_conn"], config["bantime"])
-    banner = BanFetcher(config["db_conn"], config["bindstring"])
+    iptables_lock = threading.Lock()
+
+    cleaner = BanCleaner(config["db_conn"], config["bantime"], iptables_lock)
+    banner = BanFetcher(config["db_conn"], config["bindstring"], 
+                        config["interface"], iptables_lock)
     try:
         cleaner.start()
         logging.warning("Started running cleaner")
