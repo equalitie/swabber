@@ -49,7 +49,7 @@ def runThreads(configpath, verbose):
     banner = BanFetcher(config["db_conn"], config["bindstring"], 
                         config["interface"], iptables_lock)
     try:
-        cleaner.start()
+        #cleaner.start()
         logging.warning("Started running cleaner")
         banner.start()
         logging.warning("Started running banner")

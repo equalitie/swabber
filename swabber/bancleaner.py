@@ -40,7 +40,12 @@ class BanCleaner(threading.Thread):
         for ban in ban_entries:
             if datetime.datetime.now() - ban.banstart > self.timelimit:
                 logging.info("Unbanning %s as the ban has expired", ban.ipaddress)
-                with self.iptables_lock: 
+                with self.iptables_lock:
+                    from time import sleep
+                    logging.debug("Cleaner is locking and sleeping");
+                    sleep(5);
+                    logging.debug("Cleaner woke up");
+ 
                     ban.unban()
                 logging.debug("Unbanned %s", ban.ipaddress)
                 session.delete(ban)
