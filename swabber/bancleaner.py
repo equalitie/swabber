@@ -2,69 +2,91 @@
 
 __author__ = "nosmo@nosmo.me"
 
-import time
 import daemon
+import iptc
+
+from banobjects import BanEntry
+
+import time
 import logging
-import banobjects
 import threading
+import traceback
 import datetime
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
+import sys
 
 """Clean rules that have expired"""
 
-#TODO make me  options
-#DB_CONN = 'mysql://root@127.0.0.1/swabber'
-DB_CONN = 'sqlite:////tmp/swabber.db'
 #minutes
 BANTIME = 2
 
+BANLIMIT = 10
+
 class BanCleaner(threading.Thread):
 
-    def __init__(self, db_uri, bantime, lock): 
-        self.db_uri = db_uri
+    def __init__(self, bantime, lock): 
         self.bantime = bantime
-        engine = create_engine(db_uri, echo=False)
-        self.Sessionmaker = sessionmaker(bind=engine)
-        self.timelimit = datetime.timedelta(minutes=bantime)
+        self.timelimit = bantime * 60
         threading.Thread.__init__(self)
         self.running = False
 
         self.iptables_lock = lock
 
     def cleanBans(self):
-        session = self.Sessionmaker()
+        
+        table = iptc.Table(iptc.Table.FILTER)
+        chain = iptc.Chain(iptc.Table(iptc.Table.FILTER), "INPUT")
 
-        ban_entries = session.query(banobjects.BanEntry).all()
-        print "Starting sweep on %d entries" % len(ban_entries)
-        for ban in ban_entries:
-            if datetime.datetime.now() - ban.banstart > self.timelimit:
+        for rule in chain.rules: 
+            print "Passing over chain"
+            # This does two selects 
+            # dumb but fix later. 
+
+            now = int(time.time())
+            ban = BanEntry(rule.src.split("/")[0])
+            if not ban.rule: 
+                continue
+
+            if (now - ban.banstart) > self.timelimit: 
                 logging.info("Unbanning %s as the ban has expired", ban.ipaddress)
                 with self.iptables_lock: 
                     ban.unban()
                 logging.debug("Unbanned %s", ban.ipaddress)
-                session.delete(ban)
-        session.commit()
-        return True
 
+            del(ban)
+        del(table)
+        del(chain)
+
+        return True
+        
     def stopIt(self):
         self.running = False
 
     def run(self): 
         self.running = True
+        logging.info("Started running bancleaner")
         while self.running:
             try:
                 self.cleanBans()
                 time.sleep(5)
             except Exception as e: 
                 logging.error("Uncaught exception in cleaner! %s", str(e))
+                traceback.print_exc()
                 #self.running = False
 
         return False
 
 def main():
-    banobjects.createDB(DB_CONN)
-    b = BanCleaner(DB_CONN, BANTIME)
+    
+    mainlogger = logging.getLogger()
+
+    #logging.basicConfig(level=logging.DEBUG)
+    #ch = logging.StreamHandler(sys.stdout)
+    #ch.setLevel(logging.DEBUG)
+    #formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    #ch.setFormatter(formatter)
+    #mainlogger.addHandler(ch)
+
+    b = BanCleaner(BANTIME, threading.Lock())
     b.run()
 
 if __name__ == "__main__": 
