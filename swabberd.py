@@ -21,8 +21,6 @@ def getConfig(configpath):
     config = yaml.load(config_h.read())
     config_h.close()
 
-    if "db_conn" not in config: 
-        config["db_conn"] = 'sqlite:///swabber.db'
     if "bantime" not in config: 
         # minutes
         config["bantime"] = 2
@@ -36,18 +34,11 @@ def getConfig(configpath):
 def runThreads(configpath, verbose):
     config = getConfig(configpath)
 
-    #TODO initialise DB
-    try:
-        banobjects.createDB(config["db_conn"])
-    except sqlalchemy.exc.OperationalError:
-        logging.error("Couldn't create DB! Is path valid for %s?", config["db_conn"])
-        return False
-
     iptables_lock = threading.Lock()
 
-    cleaner = BanCleaner(config["db_conn"], config["bantime"], iptables_lock)
-    banner = BanFetcher(config["db_conn"], config["bindstring"], 
-                        config["interface"], iptables_lock)
+    cleaner = BanCleaner(config["bantime"], iptables_lock)
+    banner = BanFetcher(config["bindstring"], 
+                        config["interface"], iptables_lock, verbose)
     try:
         cleaner.start()
         logging.warning("Started running cleaner")

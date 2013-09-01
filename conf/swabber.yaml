@@ -1,4 +1,3 @@
-db_conn: sqlite:////var/lib/swabber.db
 bantime: 2
 bindstring: tcp://127.0.0.1:22620
 interface: eth+

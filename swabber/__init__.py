@@ -1,3 +1,3 @@
-from banobjects import BanEntry, createDB
+from banobjects import BanEntry
 from bancleaner import BanCleaner
 from banfetcher import BanFetcher
