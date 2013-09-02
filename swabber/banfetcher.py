@@ -66,8 +66,12 @@ class BanFetcher(threading.Thread):
         self.socket = context.socket (zmq.SUB)
         subscriber = zmqstream.ZMQStream(self.socket)
 
-        self.socket.setsockopt(zmq.RCVHWM, 2000)
-        self.socket.setsockopt(zmq.SNDHWM, 2000)
+        if "RCVHWM" in dir(zmq):
+            self.socket.setsockopt(zmq.RCVHWM, 2000)
+        if "SNDHWM" in dir(zmq):
+            self.socket.setsockopt(zmq.SNDHWM, 2000)
+        if "HWM" in dir(zmq): 
+            self.socket.setsockopt(zmq.HWM, 2000)
 
         # SWAP is removed in zmq :( 
         #self.socket.setsockopt(zmq.SWAP, 200*2**10)

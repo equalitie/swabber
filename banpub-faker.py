@@ -12,9 +12,13 @@ ioloop.install()
 context   = zmq.Context(1)
 socket    = context.socket(zmq.PUB)
 # Avoid killing the server with requests
-socket.setsockopt(zmq.RCVHWM, 50)
-socket.setsockopt(zmq.SNDHWM, 50)
-#socket.setsockopt(zmq.SWAP, 200*2**10)
+
+if "RCVHWM" in dir(zmq):
+  socket.setsockopt(zmq.RCVHWM, 2000)
+if "SNDHWM" in dir(zmq):
+  socket.setsockopt(zmq.SNDHWM, 2000)
+if "HWM" in dir(zmq):
+  socket.setsockopt(zmq.HWM, 2000)
 
 publisher = zmqstream.ZMQStream(socket)
 socket.bind("tcp://127.0.0.1:22620")
