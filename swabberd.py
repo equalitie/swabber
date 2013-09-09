@@ -14,6 +14,7 @@ import threading
 import lockfile
 import logging
 import optparse
+import os
 import sys
 
 def getConfig(configpath): 
@@ -50,9 +51,14 @@ def runThreads(configpath, verbose):
         banner.running = False
 
 def main(): 
+
+
     parser = optparse.OptionParser()
     parser.add_option("-v", "--verbose", dest="verbose",
                       help="Be verbose in output, don't daemonise", 
+                      action="store_true")
+    parser.add_option("-F", "--force", dest="forcerun",
+                      help="Try to run when not root", 
                       action="store_true")
 
     parser.add_option("-c", "--config",
@@ -61,6 +67,14 @@ def main():
                       help="alternate path for configuration file")
     
     (options, args) = parser.parse_args()
+
+    if os.getuid != 0 and not options.forcerun: 
+        sys.stderr.write("Not running as I need root access - use -F to force run\n")
+        sys.exit(1)
+
+    if not os.path.isfile(options.configpath): 
+        sys.stderr.write("Couldn't load config file %s!\n" % options.configpath)
+        sys.exit(1)
 
     if not options.verbose:
         with daemon.DaemonContext(pidfile=lockfile.FileLock('/var/run/swabber.pid')):
