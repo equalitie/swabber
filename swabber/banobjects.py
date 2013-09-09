@@ -4,8 +4,33 @@ __author__ = "nosmo@nosmo.me"
 
 import iptc
 import time
+import hostsfile
 
-class BanEntry(object): 
+class HostsBanEntry(object): 
+
+    def __init__(self, ipaddress): 
+        self.hostsfile = hostsfile.HostsDeny()
+        self.ipaddress = ipaddress
+        self.banstart = None
+        if ipaddress in self.hostsfile: 
+            hostsfileentry = self.hostsfile[ipaddress]
+            if hostsfileentry[2] and "swabber" in hostsfileentry[2]:
+                self.banstart = int(hostsfileentry[2].split(":")[1])
+
+    def ban(self, interface=None): 
+        #interface is a dummy 
+        self.banstart = int(time.time())
+        comment = "swabber:%s" % self.banstart
+        self.hostsfile.add(self.ipaddress, comment=comment)
+
+        return True
+
+    def unban(self): 
+        self.hostsfile -= self.ipaddress
+
+class IPTCBanEntry(object): 
+
+    fault_exception = iptc.IPTCError
 
     def __init__(self, ipaddress): 
         self.ipaddress = ipaddress
@@ -15,12 +40,14 @@ class BanEntry(object):
         self.rule = None
         self.banstart = None
 
-        for rule in chain.rules:
+        rules = chain.rules
+        for rule in rules:
             if rule.src == "%s/255.255.255.255" % self.ipaddress:
                 if rule.matches:
                     comment = rule.matches[0].comment
                     #TODO regexp matching
                     if "swabber:" in comment: 
+                        self.chain = chain
                         self.rule = rule
                         self.banstart = int(comment.split(":")[1].strip('"'))
 
@@ -28,8 +55,13 @@ class BanEntry(object):
         #    # We're a new rule
         #    self.banstart = int(time.time())
 
-        self.table = None
-        self.chain = None
+        if not self.rule: 
+            self.table = None
+            self.chain = None
+
+    #TODO
+    #@staticmethod
+    #def _static_ban(ban, interface): 
 
     def ban(self, interface): 
         self.banstart = int(time.time())
@@ -51,22 +83,17 @@ class BanEntry(object):
 
         return True
 
-    def __del__(self): 
-        del(self.table)
-        del(self.chain)
-        del(self.rule)
-
     def unban(self): 
-        if not self.rule: 
+        if not self.rule:
             return False
-        table = iptc.Table(iptc.Table.FILTER)
-        chain = iptc.Chain(iptc.Table(iptc.Table.FILTER), "INPUT")
-        chain.delete_rule(self.rule)
+        self.chain.delete_rule(self.rule)
         return True
 
     def __repr__(self):
         return "<BanEntry('%s', %s)>" % (self.ipaddress, 
                                          self.banstart)
+
+BanEntry=HostsBanEntry
 
 def main(): 
     pass

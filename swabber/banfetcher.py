@@ -32,11 +32,11 @@ class BanFetcher(threading.Thread):
         if action == "swabber_bans":
             logging.debug("Received ban for %s", message[1])
             thenow = datetime.datetime.now()
-
-            ban = BanEntry(ipaddress)
-            logging.debug("Created banentry for %s", ipaddress)
-
+            
             with self.iptables_lock:
+                ban = BanEntry(ipaddress)
+                logging.debug("Created banentry for %s", ipaddress)
+
                 logging.debug("Fetcher got iptables lock")
                 try:
                     if ban.banstart:
@@ -50,7 +50,6 @@ class BanFetcher(threading.Thread):
                 except iptc.IPTCError as e:
                     logging.error("Failed to initialise ban - do we lack permissions?: %s", e)
                     raise SystemExit
-            del(ban)
 
         else:
             logging.error("Got an invalid message header: %s", message)

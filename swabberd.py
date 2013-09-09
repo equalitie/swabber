@@ -46,9 +46,10 @@ def runThreads(configpath, verbose):
         banner.start()
         logging.warning("Started running banner")
     except Exception as e:
+        print "Exception %s" % e
         logging.error("Swabber exiting on exception %s!", str(e))
-        cleaner.running = False
-        banner.running = False
+        cleaner.stopIt()
+        banner.stopIt()
 
 def main(): 
 
@@ -68,7 +69,7 @@ def main():
     
     (options, args) = parser.parse_args()
 
-    if os.getuid != 0 and not options.forcerun: 
+    if os.getuid() != 0 and not options.forcerun: 
         sys.stderr.write("Not running as I need root access - use -F to force run\n")
         sys.exit(1)
 

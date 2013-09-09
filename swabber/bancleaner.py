@@ -4,6 +4,7 @@ __author__ = "nosmo@nosmo.me"
 
 import daemon
 import iptc
+import hostsfile
 
 from banobjects import BanEntry
 
@@ -31,32 +32,49 @@ class BanCleaner(threading.Thread):
 
         self.iptables_lock = lock
 
-    def cleanBans(self):
+
+    def _iptc_cleanBans(self):
         
-        table = iptc.Table(iptc.Table.FILTER)
-        chain = iptc.Chain(iptc.Table(iptc.Table.FILTER), "INPUT")
+        banlist = []
 
-        for rule in chain.rules: 
-            print "Passing over chain"
-            # This does two selects 
-            # dumb but fix later. 
+        with self.iptables_lock: 
+            table = iptc.Table(iptc.Table.FILTER)
+            chain = iptc.Chain(iptc.Table(iptc.Table.FILTER), "INPUT")
+            rules = chain.rules[:BANLIMIT]
+            for index, rule in enumerate(rules): 
+                # This does two selects 
+                # dumb but fix later. 
+                
+                now = int(time.time())
+                ban = BanEntry(rule.src.split("/")[0])
+                if not ban.rule: 
+                    continue
 
-            now = int(time.time())
-            ban = BanEntry(rule.src.split("/")[0])
-            if not ban.rule: 
-                continue
+                if (now - ban.banstart) > self.timelimit: 
+                    logging.info("Unbanning %s as the ban has expired", ban.ipaddress)
+                    banlist.append(ban)
+                    logging.debug("Unbanned %s", ban.ipaddress)
+                if index > BANLIMIT: 
+                    # Rate limit a little
+                    break
 
-            if (now - ban.banstart) > self.timelimit: 
-                logging.info("Unbanning %s as the ban has expired", ban.ipaddress)
-                with self.iptables_lock: 
-                    ban.unban()
-                logging.debug("Unbanned %s", ban.ipaddress)
-
-            del(ban)
-        del(table)
-        del(chain)
+            for ban in banlist: 
+                ban.unban()
 
         return True
+
+    def _hosts_cleanBans(self): 
+
+        hostsban = hostsfile.HostsDeny()
+        for banentry in hostsban: 
+            ban = BanEntry(banentry[1])
+            if not ban.banstart:
+                continue
+
+            now = int(time.time())            
+            if (now - ban.banstart) > self.timelimit: 
+                logging.info("Unbanning %s as the ban has expired", ban.ipaddress)
+                ban.unban()
         
     def stopIt(self):
         self.running = False
@@ -74,6 +92,8 @@ class BanCleaner(threading.Thread):
                 #self.running = False
 
         return False
+
+    cleanBans = _hosts_cleanBans
 
 def main():
     

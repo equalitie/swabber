@@ -33,7 +33,8 @@ def publish():
                                int(random.random() * 255),
                                int(random.random() * 255))
   publisher.send_multipart(("swabber_bans", ip_to_ban))
-  time.sleep(0.2)
+  print ip_to_ban
+  time.sleep(0.01)
 
 try:
   ioloop.PeriodicCallback(publish, 5).start()
