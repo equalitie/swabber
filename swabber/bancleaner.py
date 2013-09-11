@@ -4,8 +4,9 @@ __author__ = "nosmo@nosmo.me"
 
 import daemon
 import iptc
+import hostsfile
 
-from banobjects import BanEntry
+import banobjects
 
 import time
 import logging
@@ -23,41 +24,64 @@ BANLIMIT = 10
 
 class BanCleaner(threading.Thread):
 
-    def __init__(self, bantime, lock): 
+    def _iptc_cleanBans(self):
+        
+        banlist = []
+
+        with self.iptables_lock: 
+            table = iptc.Table(iptc.Table.FILTER)
+            chain = iptc.Chain(iptc.Table(iptc.Table.FILTER), "INPUT")
+            rules = chain.rules[:BANLIMIT]
+            for index, rule in enumerate(rules): 
+                # This does two selects 
+                # dumb but fix later. 
+                
+                now = int(time.time())
+                ban = self.BanObject(rule.src.split("/")[0])
+                if not ban.banstart: 
+                    continue
+
+                if (now - ban.banstart) > self.timelimit: 
+                    logging.info("Unbanning %s as the ban has expired", ban.ipaddress)
+                    banlist.append(ban)
+                    logging.debug("Unbanned %s", ban.ipaddress)
+                if index > BANLIMIT: 
+                    # Rate limit a little
+                    break
+
+            for ban in banlist: 
+                ban.unban()
+
+        return True
+
+    def _hosts_cleanBans(self): 
+
+        hostsban = hostsfile.HostsDeny()
+        for banentry in hostsban: 
+            ban = self.BanObject(banentry[1])
+            if not ban.banstart:
+                continue
+
+            now = int(time.time())            
+            if (now - ban.banstart) > self.timelimit: 
+                logging.info("Unbanning %s as the ban has expired", ban.ipaddress)
+                ban.unban()
+
+    #TODO make lock optional
+    def __init__(self, bantime, backend, lock): 
         self.bantime = bantime
+        self.BanObject = banobjects.entries[backend]
         self.timelimit = bantime * 60
         threading.Thread.__init__(self)
         self.running = False
 
         self.iptables_lock = lock
-
-    def cleanBans(self):
         
-        table = iptc.Table(iptc.Table.FILTER)
-        chain = iptc.Chain(iptc.Table(iptc.Table.FILTER), "INPUT")
+        self.cleanBans = {
+            "hostsfile": self._hosts_cleanBans,
+            "iptables": self._iptc_cleanBans
+            }[backend]
 
-        for rule in chain.rules: 
-            print "Passing over chain"
-            # This does two selects 
-            # dumb but fix later. 
-
-            now = int(time.time())
-            ban = BanEntry(rule.src.split("/")[0])
-            if not ban.rule: 
-                continue
-
-            if (now - ban.banstart) > self.timelimit: 
-                logging.info("Unbanning %s as the ban has expired", ban.ipaddress)
-                with self.iptables_lock: 
-                    ban.unban()
-                logging.debug("Unbanned %s", ban.ipaddress)
-
-            del(ban)
-        del(table)
-        del(chain)
-
-        return True
-        
     def stopIt(self):
         self.running = False
 

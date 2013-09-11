@@ -5,6 +5,7 @@ __author__ = "nosmo@nosmo.me"
 import json
 import iptc
 import zmq
+from zmq.eventloop import ioloop, zmqstream
 
 import datetime
 import logging
@@ -12,9 +13,7 @@ import re
 import sys
 import threading
 
-from zmq.eventloop import ioloop, zmqstream
-
-from banobjects import BanEntry
+import banobjects
 
 BINDSTRING = "tcp://127.0.0.1:22620"
 
@@ -32,11 +31,11 @@ class BanFetcher(threading.Thread):
         if action == "swabber_bans":
             logging.debug("Received ban for %s", message[1])
             thenow = datetime.datetime.now()
-
-            ban = BanEntry(ipaddress)
-            logging.debug("Created banentry for %s", ipaddress)
-
+            
             with self.iptables_lock:
+                ban = self.BanObject(ipaddress)
+                logging.debug("Created banentry for %s", ipaddress)
+
                 logging.debug("Fetcher got iptables lock")
                 try:
                     if ban.banstart:
@@ -47,23 +46,25 @@ class BanFetcher(threading.Thread):
                         ban.ban(self.interface)
                         logging.info("Extended ban for %s", ipaddress)
                         
-                except iptc.IPTCError as e:
+                except self.BanObject.fault_exception as e:
                     logging.error("Failed to initialise ban - do we lack permissions?: %s", e)
                     raise SystemExit
-            del(ban)
 
         else:
             logging.error("Got an invalid message header: %s", message)
 
 
+    #TODO make lock optional
     def __init__(self, bindstring, 
-                 interface, lock, 
-                 verbose=False):
+                 interface, backend, 
+                 lock, verbose=False):
         self.bindstring = bindstring
         self.interface = interface
+        self.backend = backend
+        self.BanObject = banobjects.entries[backend]
 
         context = zmq.Context()
-        self.socket = context.socket (zmq.SUB)
+        self.socket = context.socket(zmq.SUB)
         subscriber = zmqstream.ZMQStream(self.socket)
 
         if "RCVHWM" in dir(zmq):
