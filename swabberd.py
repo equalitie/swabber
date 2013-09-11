@@ -48,20 +48,24 @@ def runThreads(configpath, verbose):
     iptables_lock = threading.Lock()
 
     #TODO make iptables_lock optional
-    cleaner = BanCleaner(config["bantime"], config["backend"], 
-                         iptables_lock)
+    cleaner = None
+    if config["bantime"] != 0:
+        cleaner = BanCleaner(config["bantime"], config["backend"], 
+                             iptables_lock)
     banner = BanFetcher(config["bindstring"], 
                         config["interface"], config["backend"], 
                         iptables_lock, verbose)
     try:
-        cleaner.start()
-        logging.warning("Started running cleaner")
+        if config["bantime"] != 0:
+            cleaner.start()
+            logging.warning("Started running cleaner")
         banner.start()
         logging.warning("Started running banner")
     except Exception as e:
         print "Exception %s" % e
         logging.error("Swabber exiting on exception %s!", str(e))
-        cleaner.stopIt()
+        if config["bantime"] != 0:
+            cleaner.stopIt()
         banner.stopIt()
 
 def main(): 
