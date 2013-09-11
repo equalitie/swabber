@@ -7,6 +7,8 @@ import time
 import hostsfile
 
 class HostsBanEntry(object): 
+    
+    fault_exception = IOError
 
     def __init__(self, ipaddress): 
         self.hostsfile = hostsfile.HostsDeny()
@@ -92,6 +94,11 @@ class IPTCBanEntry(object):
     def __repr__(self):
         return "<BanEntry('%s', %s)>" % (self.ipaddress, 
                                          self.banstart)
+
+entries={
+    "iptables": IPTCBanEntry, 
+    "hostsfile": HostsBanEntry
+    }
 
 BanEntry=HostsBanEntry
 

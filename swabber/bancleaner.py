@@ -6,7 +6,7 @@ import daemon
 import iptc
 import hostsfile
 
-from banobjects import BanEntry
+import banobjects
 
 import time
 import logging
@@ -24,15 +24,6 @@ BANLIMIT = 10
 
 class BanCleaner(threading.Thread):
 
-    def __init__(self, bantime, lock): 
-        self.bantime = bantime
-        self.timelimit = bantime * 60
-        threading.Thread.__init__(self)
-        self.running = False
-
-        self.iptables_lock = lock
-
-
     def _iptc_cleanBans(self):
         
         banlist = []
@@ -46,8 +37,8 @@ class BanCleaner(threading.Thread):
                 # dumb but fix later. 
                 
                 now = int(time.time())
-                ban = BanEntry(rule.src.split("/")[0])
-                if not ban.rule: 
+                ban = self.BanObject(rule.src.split("/")[0])
+                if not ban.banstart: 
                     continue
 
                 if (now - ban.banstart) > self.timelimit: 
@@ -67,7 +58,7 @@ class BanCleaner(threading.Thread):
 
         hostsban = hostsfile.HostsDeny()
         for banentry in hostsban: 
-            ban = BanEntry(banentry[1])
+            ban = self.BanObject(banentry[1])
             if not ban.banstart:
                 continue
 
@@ -75,7 +66,22 @@ class BanCleaner(threading.Thread):
             if (now - ban.banstart) > self.timelimit: 
                 logging.info("Unbanning %s as the ban has expired", ban.ipaddress)
                 ban.unban()
+
+    #TODO make lock optional
+    def __init__(self, bantime, backend, lock): 
+        self.bantime = bantime
+        self.BanObject = banobjects.entries[backend]
+        self.timelimit = bantime * 60
+        threading.Thread.__init__(self)
+        self.running = False
+
+        self.iptables_lock = lock
         
+        self.cleanBans = {
+            "hostsfile": self._hosts_cleanBans,
+            "iptables": self._iptc_cleanBans
+            }[backend]
+
     def stopIt(self):
         self.running = False
 
@@ -92,8 +98,6 @@ class BanCleaner(threading.Thread):
                 #self.running = False
 
         return False
-
-    cleanBans = _hosts_cleanBans
 
 def main():
     

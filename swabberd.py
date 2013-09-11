@@ -17,11 +17,14 @@ import optparse
 import os
 import sys
 
+BACKENDS = ["iptables", "hostsfile"]
+
 def getConfig(configpath): 
     config_h = open(configpath)
     config = yaml.load(config_h.read())
     config_h.close()
-
+    
+    # defaults
     if "bantime" not in config: 
         # minutes
         config["bantime"] = 2
@@ -29,6 +32,13 @@ def getConfig(configpath):
         config["bindstring"] = "tcp://127.0.0.1:22620"
     if "interface" not in config:
         config["interface"] = "eth+"
+    if "backend" not in config:
+        config["backend"] = "iptables"
+
+    if config["backend"] not in BACKENDS: 
+        raise ValueError("%s is not in backends: %s", 
+                         config["backend"], 
+                         ", ".join(BACKENDS))
 
     return config
 
@@ -37,9 +47,12 @@ def runThreads(configpath, verbose):
 
     iptables_lock = threading.Lock()
 
-    cleaner = BanCleaner(config["bantime"], iptables_lock)
+    #TODO make iptables_lock optional
+    cleaner = BanCleaner(config["bantime"], config["backend"], 
+                         iptables_lock)
     banner = BanFetcher(config["bindstring"], 
-                        config["interface"], iptables_lock, verbose)
+                        config["interface"], config["backend"], 
+                        iptables_lock, verbose)
     try:
         cleaner.start()
         logging.warning("Started running cleaner")
