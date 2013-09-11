@@ -14,7 +14,6 @@ import zmq
 from zmq.eventloop import ioloop, zmqstream
 
 BAN_IP = "10.123.45.67"
-DB_CONN = 'sqlite:///%s/swabber.db' % tempfile.mkdtemp()
 BINDSTRING = "tcp://127.0.0.1:22620"
 INTERFACE = "eth+"
 
@@ -58,6 +57,33 @@ class StressTest(object):
             a.start()
             del(a)
 
+class Attacker(threading.Thread): 
+    def __init__(self, testip): 
+        self.testip = testip
+        threading.Thread.__init__(self)
+
+    def run(self):
+        context   = zmq.Context(1)
+        socket    = context.socket(zmq.PUB)
+        publisher = zmqstream.ZMQStream(socket)
+        socket.bind("tcp://127.0.0.1:22620")
+        publisher.send_multipart(("swabber_bans", testip))
+        return True
+
+class StressTest(object): 
+
+    def __init__(self, testip, hit_times=1000000): 
+        self.testip = testip
+        self.hit_times = hit_times
+
+    def run(self): 
+        for i in range(self.hit_times): 
+            if i % 100 == 0:
+                print "Attacked %d times" % i
+
+            a = Attacker(self.testip)
+            a.start()
+
 class BanTests(unittest.TestCase):
 
     def testBan(self):
@@ -72,12 +98,6 @@ class BanTests(unittest.TestCase):
 class CleanTests(unittest.TestCase): 
     
     def testClean(self): 
-        db_conn = 'sqlite:///%s/swabber.db' % tempfile.mkdtemp()
-        createDB(db_conn)
-
-        engine = create_engine(db_conn, echo=False)
-        Sessionmaker = sessionmaker(bind=engine)
-        session = Sessionmaker()
 
         ban_len = 1
         bantime = datetime.timedelta(minutes=(ban_len*2))

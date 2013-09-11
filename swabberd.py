@@ -14,15 +14,17 @@ import threading
 import lockfile
 import logging
 import optparse
+import os
 import sys
+
+BACKENDS = ["iptables", "hostsfile"]
 
 def getConfig(configpath): 
     config_h = open(configpath)
     config = yaml.load(config_h.read())
     config_h.close()
-
-    if "db_conn" not in config: 
-        config["db_conn"] = 'sqlite:///swabber.db'
+    
+    # defaults
     if "bantime" not in config: 
         # minutes
         config["bantime"] = 2
@@ -30,38 +32,51 @@ def getConfig(configpath):
         config["bindstring"] = "tcp://127.0.0.1:22620"
     if "interface" not in config:
         config["interface"] = "eth+"
+    if "backend" not in config:
+        config["backend"] = "iptables"
+
+    if config["backend"] not in BACKENDS: 
+        raise ValueError("%s is not in backends: %s", 
+                         config["backend"], 
+                         ", ".join(BACKENDS))
 
     return config
 
 def runThreads(configpath, verbose):
     config = getConfig(configpath)
 
-    #TODO initialise DB
-    try:
-        banobjects.createDB(config["db_conn"])
-    except sqlalchemy.exc.OperationalError:
-        logging.error("Couldn't create DB! Is path valid for %s?", config["db_conn"])
-        return False
-
     iptables_lock = threading.Lock()
 
-    cleaner = BanCleaner(config["db_conn"], config["bantime"], iptables_lock)
-    banner = BanFetcher(config["db_conn"], config["bindstring"], 
-                        config["interface"], iptables_lock)
+    #TODO make iptables_lock optional
+    cleaner = None
+    if config["bantime"] != 0:
+        cleaner = BanCleaner(config["bantime"], config["backend"], 
+                             iptables_lock)
+    banner = BanFetcher(config["bindstring"], 
+                        config["interface"], config["backend"], 
+                        iptables_lock, verbose)
     try:
-        cleaner.start()
-        logging.warning("Started running cleaner")
+        if config["bantime"] != 0:
+            cleaner.start()
+            logging.warning("Started running cleaner")
         banner.start()
         logging.warning("Started running banner")
     except Exception as e:
+        print "Exception %s" % e
         logging.error("Swabber exiting on exception %s!", str(e))
-        cleaner.running = False
-        banner.running = False
+        if config["bantime"] != 0:
+            cleaner.stopIt()
+        banner.stopIt()
 
 def main(): 
+
+
     parser = optparse.OptionParser()
     parser.add_option("-v", "--verbose", dest="verbose",
                       help="Be verbose in output, don't daemonise", 
+                      action="store_true")
+    parser.add_option("-F", "--force", dest="forcerun",
+                      help="Try to run when not root", 
                       action="store_true")
 
     parser.add_option("-c", "--config",
@@ -70,6 +85,14 @@ def main():
                       help="alternate path for configuration file")
     
     (options, args) = parser.parse_args()
+
+    if os.getuid() != 0 and not options.forcerun: 
+        sys.stderr.write("Not running as I need root access - use -F to force run\n")
+        sys.exit(1)
+
+    if not os.path.isfile(options.configpath): 
+        sys.stderr.write("Couldn't load config file %s!\n" % options.configpath)
+        sys.exit(1)
 
     if not options.verbose:
         with daemon.DaemonContext(pidfile=lockfile.FileLock('/var/run/swabber.pid')):

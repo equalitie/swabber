@@ -2,69 +2,115 @@
 
 __author__ = "nosmo@nosmo.me"
 
-import time
 import daemon
-import logging
+import iptc
+import hostsfile
+
 import banobjects
+
+import time
+import logging
 import threading
+import traceback
 import datetime
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
+import sys
 
 """Clean rules that have expired"""
 
-#TODO make me  options
-#DB_CONN = 'mysql://root@127.0.0.1/swabber'
-DB_CONN = 'sqlite:////tmp/swabber.db'
 #minutes
 BANTIME = 2
 
+BANLIMIT = 10
+
 class BanCleaner(threading.Thread):
 
-    def __init__(self, db_uri, bantime, lock): 
-        self.db_uri = db_uri
+    def _iptc_cleanBans(self):
+        
+        banlist = []
+
+        with self.iptables_lock: 
+            table = iptc.Table(iptc.Table.FILTER)
+            chain = iptc.Chain(iptc.Table(iptc.Table.FILTER), "INPUT")
+            rules = chain.rules[:BANLIMIT]
+            for index, rule in enumerate(rules): 
+                # This does two selects 
+                # dumb but fix later. 
+                
+                now = int(time.time())
+                ban = self.BanObject(rule.src.split("/")[0])
+                if not ban.banstart: 
+                    continue
+
+                if (now - ban.banstart) > self.timelimit: 
+                    logging.info("Unbanning %s as the ban has expired", ban.ipaddress)
+                    banlist.append(ban)
+                    logging.debug("Unbanned %s", ban.ipaddress)
+                if index > BANLIMIT: 
+                    # Rate limit a little
+                    break
+
+            for ban in banlist: 
+                ban.unban()
+
+        return True
+
+    def _hosts_cleanBans(self): 
+
+        hostsban = hostsfile.HostsDeny()
+        for banentry in hostsban: 
+            ban = self.BanObject(banentry[1])
+            if not ban.banstart:
+                continue
+
+            now = int(time.time())            
+            if (now - ban.banstart) > self.timelimit: 
+                logging.info("Unbanning %s as the ban has expired", ban.ipaddress)
+                ban.unban()
+
+    #TODO make lock optional
+    def __init__(self, bantime, backend, lock): 
         self.bantime = bantime
-        engine = create_engine(db_uri, echo=False)
-        self.Sessionmaker = sessionmaker(bind=engine)
-        self.timelimit = datetime.timedelta(minutes=bantime)
+        self.BanObject = banobjects.entries[backend]
+        self.timelimit = bantime * 60
         threading.Thread.__init__(self)
         self.running = False
 
         self.iptables_lock = lock
-
-    def cleanBans(self):
-        session = self.Sessionmaker()
-
-        ban_entries = session.query(banobjects.BanEntry).all()
-        print "Starting sweep on %d entries" % len(ban_entries)
-        for ban in ban_entries:
-            if datetime.datetime.now() - ban.banstart > self.timelimit:
-                logging.info("Unbanning %s as the ban has expired", ban.ipaddress)
-                with self.iptables_lock: 
-                    ban.unban()
-                logging.debug("Unbanned %s", ban.ipaddress)
-                session.delete(ban)
-        session.commit()
-        return True
+        
+        self.cleanBans = {
+            "hostsfile": self._hosts_cleanBans,
+            "iptables": self._iptc_cleanBans
+            }[backend]
 
     def stopIt(self):
         self.running = False
 
     def run(self): 
         self.running = True
+        logging.info("Started running bancleaner")
         while self.running:
             try:
                 self.cleanBans()
                 time.sleep(5)
             except Exception as e: 
                 logging.error("Uncaught exception in cleaner! %s", str(e))
+                traceback.print_exc()
                 #self.running = False
 
         return False
 
 def main():
-    banobjects.createDB(DB_CONN)
-    b = BanCleaner(DB_CONN, BANTIME)
+    
+    mainlogger = logging.getLogger()
+
+    #logging.basicConfig(level=logging.DEBUG)
+    #ch = logging.StreamHandler(sys.stdout)
+    #ch.setLevel(logging.DEBUG)
+    #formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    #ch.setFormatter(formatter)
+    #mainlogger.addHandler(ch)
+
+    b = BanCleaner(BANTIME, threading.Lock())
     b.run()
 
 if __name__ == "__main__": 

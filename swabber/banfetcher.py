@@ -5,6 +5,7 @@ __author__ = "nosmo@nosmo.me"
 import json
 import iptc
 import zmq
+from zmq.eventloop import ioloop, zmqstream
 
 import datetime
 import logging
@@ -12,22 +13,13 @@ import re
 import sys
 import threading
 
-from zmq.eventloop import ioloop, zmqstream
-
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
-
 import banobjects
 
-#TODO make me an option
-#DB_CONN = 'mysql://root@127.0.0.1/swabber'
-DB_CONN = 'sqlite:////tmp/swabber.db'
 BINDSTRING = "tcp://127.0.0.1:22620"
 
 class BanFetcher(threading.Thread):
 
     def subscription(self, message):
-        session = self.Sessionmaker()
         action, ipaddress = message
 
         ipaddress= ipaddress.strip()
@@ -37,73 +29,58 @@ class BanFetcher(threading.Thread):
             return False
 
         if action == "swabber_bans":
-
             logging.debug("Received ban for %s", message[1])
             thenow = datetime.datetime.now()
+            
+            with self.iptables_lock:
+                ban = self.BanObject(ipaddress)
+                logging.debug("Created banentry for %s", ipaddress)
 
-            try:
-                banned_host = session.query(banobjects.BannedHost).filter_by(ipaddress=ipaddress).first()
-            except Exception as e: 
-                # sorry for the pokemon
-                #TODO catch more gracefully
-                loggging.error("Failed to select host for %s - bad address?", ipaddress)
-                return False
-
-            if not banned_host: 
-                banned_host = banobjects.BannedHost(ipaddress, thenow, thenow)
-                logging.info("Created ban for %s at %s", ipaddress, thenow)
-            else:
-                timebefore = banned_host.lastseen
-                banned_host.timesbanned += 1
-                banned_host.lastseen = thenow
-                logging.info("Changed lastseen for %s from %s to %s", ipaddress, 
-                             timebefore, thenow)
-
-            ban_entry = session.query(banobjects.BanEntry).filter_by(ipaddress=ipaddress).first()
-            if not ban_entry: 
-                ban_entry = banobjects.BanEntry(ipaddress, thenow) 
-                logging.info("Created ban for %s at %s. %s", ban_entry.ipaddress,
-                             thenow, 
-                             " Host has been seen %d times before." % banned_host.timesbanned if \
-                                 banned_host.timesbanned else "")
+                logging.debug("Fetcher got iptables lock")
                 try:
-                    with self.iptables_lock:
-                        logging.debug("About to ban %s on %s", ipaddress, self.interface)
-                        ban_entry.ban(self.interface)
-                        logging.debug("Successfully banned %s", ipaddress)
-                except iptc.IPTCError as e:
+                    if ban.banstart:
+                        logging.info("Created ban for %s at %s", ipaddress, thenow)
+                        ban.unban()
+                        ban.ban(self.interface)
+                    else:
+                        ban.ban(self.interface)
+                        logging.info("Extended ban for %s", ipaddress)
+                        
+                except self.BanObject.fault_exception as e:
                     logging.error("Failed to initialise ban - do we lack permissions?: %s", e)
                     raise SystemExit
 
-            else: 
-
-                timediff = thenow - ban_entry.banstart
-                ban_entry.banstart = thenow
-                logging.info("Extended ban for %s by %s.", ban_entry.ipaddress, 
-                             timediff)
-
-            session.add(ban_entry)
-            session.add(banned_host)
-            session.commit()
         else:
             logging.error("Got an invalid message header: %s", message)
 
 
-    def __init__(self, db_conn, bindstring, 
-                 interface, lock, 
-                 verbose=False):
+    #TODO make lock optional
+    def __init__(self, bindstring, 
+                 interface, backend, 
+                 lock, verbose=False):
         self.bindstring = bindstring
         self.interface = interface
+        self.backend = backend
+        self.BanObject = banobjects.entries[backend]
 
         context = zmq.Context()
-        self.socket = context.socket (zmq.SUB)
+        self.socket = context.socket(zmq.SUB)
         subscriber = zmqstream.ZMQStream(self.socket)
+
+        if "RCVHWM" in dir(zmq):
+            self.socket.setsockopt(zmq.RCVHWM, 2000)
+        if "SNDHWM" in dir(zmq):
+            self.socket.setsockopt(zmq.SNDHWM, 2000)
+        if "HWM" in dir(zmq): 
+            self.socket.setsockopt(zmq.HWM, 2000)
+
+        # SWAP is removed in zmq :( 
+        #self.socket.setsockopt(zmq.SWAP, 200*2**10)
+
         self.socket.setsockopt(zmq.SUBSCRIBE, "swabber_bans")
+
         self.socket.connect(bindstring)
         
-        engine = create_engine(db_conn, echo=verbose)
-        self.Sessionmaker = sessionmaker(bind=engine)
-
         self.iptables_lock = lock
 
         threading.Thread.__init__(self)
@@ -122,7 +99,6 @@ if __name__ == "__main__":
 
     mainlogger = logging.getLogger()
 
-    banobjects.createDB(DB_CONN)
     logging.basicConfig(level=logging.DEBUG)
     ch = logging.StreamHandler(sys.stdout)
     ch.setLevel(logging.DEBUG)
@@ -130,5 +106,5 @@ if __name__ == "__main__":
     ch.setFormatter(formatter)
     mainlogger.addHandler(ch)
 
-    bfetcher = BanFetcher(DB_CONN, BINDSTRING, verbose)
+    bfetcher = BanFetcher( BINDSTRING, "eth+", threading.Lock(), verbose)
     bfetcher.run()
