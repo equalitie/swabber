@@ -7,7 +7,7 @@ To run as a daemon, run swabber.py. Or better yet, start it via the enclosed ini
 
 Supported methods
 -------------
-At the moment Swabber supports baning via the ldx/python-iptables interface to iptables and its own internal method for using /etc/hosts.deny. Banning via iptables is the "proper" way to do things as it will work no matter what and will be managed on a higher level. 
+At the moment Swabber supports baning via the [python-iptables](https://github.com/ldx/python-iptables) interface to iptables and its own internal method for using /etc/hosts.deny. Banning via iptables is the "proper" way to do things as it will work no matter what and will be managed on a higher level. 
 
 Banning via hosts.deny is very lightweight (and will get more lightweight as batching etc is implemented) and requires less dependencies, potentially making for an easier install in very constrained situations. However, use of this file requires services to either be launched via tcpd (not very likely) or to be built with tcp wrapper support (much more likely- most services in Debian, for example). 
 
@@ -17,18 +17,23 @@ Swabber will not daemonise and log to stdout in a verbose manner when run with <
 
 To just listen for bans, run <code>python banfetcher.py</code>. This will not clean bans (which running bancleaner.py in the same way will do). There are no arguments to these individual scripts and the options are inherited from constants defined within the scripts themselves. 
 
+Hacking
+-------------
+The banpub-faker.py script is an example of a ban publisher if you fancy implementing one. It's just that simple. Be careful about your high water marks for the ZMQ depending on what your system is capable of. 
+
 Installation
 ======
+Python <= 2.5 will need to also install the json module. python-dev is required to install the dependencies. 
 
+<code>python setup.py install</code> will install the libraries and the actual swabber daemon to <code>/usr/bin/swabberd.py</code>. The <code>swabberd</code> file can be used as an init script if you're installing the package by hand. 
+
+iptables interface
+-------------
 The following modules must be loaded:
 * ip_tables
 * ip_conntrack
 * iptable_filter
 * ipt_state
-
-Python <= 2.5 will need to also install the json module. python-dev is required to install the dependencies. 
-
-<code>python setup.py install</code> will install the libraries and the actual swabber daemon to <code>/usr/bin/swabberd.py</code>. The <code>swabberd</code> file can be used as an init script if you're installing the package by hand. 
 
 Configuration
 ======
@@ -47,7 +52,7 @@ bindstring: <ZMQ connection URI>
 -------------
 The string to subscribe to bans on. This defaults to <code>tcp://127.0.0.1:22620</code> and won't really be required to be configured for day to day operations. Those who choose to hack around with Swabber may get some use out of this however. Caution is __strongly__ advised when using strings with IP addresses other than 127.0.0.1 - Swabber offers no authentication on this interface by design and an attacker with half a brain will probably ban stuff for fun. 
 
-interface: eth+
+interface: <iptables match>
 -------------
 *iptables interface only* 
 
@@ -56,3 +61,4 @@ This is the interface to issue ban rules for. Can be of the iptables match forma
 backend: hostsfile OR iptables
 -------------
 Ban hosts using /etc/hosts.deny or via iptables. See above for the explanation of the impact of this option.
+
