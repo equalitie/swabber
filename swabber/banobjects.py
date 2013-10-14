@@ -4,7 +4,53 @@ __author__ = "nosmo@nosmo.me"
 
 import iptc
 import time
+import commands
 import hostsfile
+
+class IPTablesCommandBanEntry(object):
+
+    #good question
+    #TODO
+    fault_exception = Exception
+   
+    def __init__(self, ipaddress): 
+        self.ipaddress = ipaddress
+        self.banstart = None
+
+        status, output = commands.getstatusoutput("/sbin/iptables -L -n")
+        if status: 
+            raise Exception("Couldn't list iptables rules!")
+
+        droprules = filter(lambda a: a.startswith("DROP") and "swabber" in a, output.split("\n"))
+        for rule in droprules: 
+            action, proto, opt, src, dest, _, swabber, _ = droprules[0].split()
+            if src == self.ipaddress:
+                if ":" not in swabber: 
+                    raise Exception("Malformed swabber rule in iptables! %s" % swabber)
+                _, start = swabber.split(":")
+                start = start.strip()
+                self.banstart = int(start)
+    
+    def ban(self, interface=None): 
+        interface_section = "-i %s" % interface if interface else ""
+
+        now = int(time.time())
+        command = "iptables -A INPUT -s %s %s -j DROP -m comment --comment \"swabber:%d\"" % (self.ipaddress, interface_section, now)
+        status, output = commands.getstatusoutput(command)
+        if status: 
+            raise Exception("Couldn't set iptables rule for %s (command %s): %s" % (self.ipaddress, command, output))
+        return True
+
+    def unban(self): 
+        command = "iptables -D INPUT -s %s -j DROP -m comment --comment \"swabber%d\"" % (self.ipaddress, self.banstart)
+        status, output = commands.getstatusoutput(command)
+        if status:
+            raise Exception("failed to unban IP %s: %s" % (self.ipaddress, output))
+        return True
+
+    def __repr__(self):
+        return "<BanEntry('%s', %s)>" % (self.ipaddress, 
+                                         self.banstart)
 
 class HostsBanEntry(object): 
     
@@ -29,6 +75,10 @@ class HostsBanEntry(object):
 
     def unban(self): 
         self.hostsfile -= self.ipaddress
+
+    def __repr__(self):
+        return "<BanEntry('%s', %s)>" % (self.ipaddress, 
+                                         self.banstart)
 
 class IPTCBanEntry(object): 
 
@@ -95,12 +145,13 @@ class IPTCBanEntry(object):
         return "<BanEntry('%s', %s)>" % (self.ipaddress, 
                                          self.banstart)
 
-entries={
+entries = {
+    "iptables_cmd": IPTablesCommandBanEntry,
     "iptables": IPTCBanEntry, 
     "hostsfile": HostsBanEntry
     }
 
-BanEntry=HostsBanEntry
+BanEntry = HostsBanEntry
 
 def main(): 
     pass
