@@ -31,7 +31,7 @@ class BanCleaner(threading.Thread):
         with self.iptables_lock: 
             table = iptc.Table(iptc.Table.FILTER)
             chain = iptc.Chain(iptc.Table(iptc.Table.FILTER), "INPUT")
-            rules = chain.rules[:BANLIMIT]
+            rules = chain.rules
             for index, rule in enumerate(rules): 
                 # This does two selects 
                 # dumb but fix later. 
@@ -110,7 +110,7 @@ def main():
     #ch.setFormatter(formatter)
     #mainlogger.addHandler(ch)
 
-    b = BanCleaner(BANTIME, threading.Lock())
+    b = BanCleaner(BANTIME, "iptables", threading.Lock())
     b.run()
 
 if __name__ == "__main__": 

@@ -57,7 +57,7 @@ class BanFetcher(threading.Thread):
     #TODO make lock optional
     def __init__(self, bindstring, 
                  interface, backend, 
-                 lock, verbose=False):
+                 lock):
         self.bindstring = bindstring
         self.interface = interface
         self.backend = backend
@@ -95,16 +95,17 @@ class BanFetcher(threading.Thread):
 
 if __name__ == "__main__": 
 
-    verbose = True
+    verbose = False
 
-    mainlogger = logging.getLogger()
+    if verbose:
+        mainlogger = logging.getLogger()
+        
+        logging.basicConfig(level=logging.DEBUG)
+        ch = logging.StreamHandler(sys.stdout)
+        ch.setLevel(logging.DEBUG)
+        formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+        ch.setFormatter(formatter)
+        mainlogger.addHandler(ch)
 
-    logging.basicConfig(level=logging.DEBUG)
-    ch = logging.StreamHandler(sys.stdout)
-    ch.setLevel(logging.DEBUG)
-    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-    ch.setFormatter(formatter)
-    mainlogger.addHandler(ch)
-
-    bfetcher = BanFetcher( BINDSTRING, "eth+", threading.Lock(), verbose)
+    bfetcher = BanFetcher( BINDSTRING, "eth+", "iptables", threading.Lock())
     bfetcher.run()
