@@ -29,8 +29,8 @@ class BanCleaner(threading.Thread):
         banlist = []
 
         with self.iptables_lock: 
-            table = iptc.Table(iptc.Table.FILTER)
-            chain = iptc.Chain(iptc.Table(iptc.Table.FILTER), "INPUT")
+            table = iptc.Table(iptc.Table.FILTER, autocommit=False)
+            chain = iptc.Chain(table, "INPUT")
             rules = chain.rules
             for index, rule in enumerate(rules): 
                 # This does two selects 
@@ -51,6 +51,7 @@ class BanCleaner(threading.Thread):
 
             for ban in banlist: 
                 ban.unban()
+            table.commit()
 
         return True
 

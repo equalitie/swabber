@@ -75,7 +75,8 @@ class BanFetcher(threading.Thread):
             self.socket.setsockopt(zmq.HWM, 2000)
 
         # SWAP is removed in zmq :( 
-        #self.socket.setsockopt(zmq.SWAP, 200*2**10)
+        if "SWAP" in dir(zmq):
+            self.socket.setsockopt(zmq.SWAP, 200*2**10)
 
         self.socket.setsockopt(zmq.SUBSCRIBE, "swabber_bans")
 

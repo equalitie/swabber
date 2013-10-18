@@ -7,7 +7,6 @@ from swabber import BanFetcher
 from swabber import banobjects
 
 import daemon
-import sqlalchemy
 import yaml
 
 import threading
@@ -17,7 +16,7 @@ import optparse
 import os
 import sys
 
-BACKENDS = ["iptables", "hostsfile"]
+BACKENDS = ["iptables", "hostsfile", "iptables_cmd"]
 
 def getConfig(configpath): 
     config_h = open(configpath)
@@ -54,7 +53,7 @@ def runThreads(configpath, verbose):
                              iptables_lock)
     banner = BanFetcher(config["bindstring"], 
                         config["interface"], config["backend"], 
-                        iptables_lock, verbose)
+                        iptables_lock)
     try:
         if config["bantime"] != 0:
             cleaner.start()

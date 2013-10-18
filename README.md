@@ -29,11 +29,12 @@ Python <= 2.5 will need to also install the json module. python-dev is required 
 
 iptables interface
 -------------
-The following modules must be loaded:
-* ip_tables
+The following modules must be loaded on Debian wheezy:
 * ip_conntrack
 * iptable_filter
 * ipt_state
+
+Setup for your system will probably be different if you are on another distro, depending on how your kernel was compiled. 
 
 Configuration
 ======

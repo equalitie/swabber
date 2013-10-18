@@ -30,6 +30,20 @@ class IPTablesCommandBanEntry(object):
                 _, start = swabber.split(":")
                 start = start.strip()
                 self.banstart = int(start)
+
+    @staticmethod
+    def list(timelimit=None): 
+        rulesdict = {}
+        droprules = filter(lambda a: a.startswith("DROP") and "swabber" in a, output.split("\n"))
+        for rule in droprules: 
+            action, proto, opt, src, dest, _, swabber, _ = droprules[0].split()
+            if ":" not in swabber: 
+                raise Exception("Malformed swabber rule in iptables! %s" % swabber)
+            _, start = swabber.split(":")
+            start = int(start.strip())
+            if not timelimit or (timelimit and (time.time() - start > timelimit)): 
+                rulesdict[src] = swabber
+
     
     def ban(self, interface=None): 
         interface_section = "-i %s" % interface if interface else ""
@@ -87,8 +101,8 @@ class IPTCBanEntry(object):
     def __init__(self, ipaddress): 
         self.ipaddress = ipaddress
 
-        table = iptc.Table(iptc.Table.FILTER)
-        chain = iptc.Chain(iptc.Table(iptc.Table.FILTER), "INPUT")
+        table = iptc.Table(iptc.Table.FILTER, autocommit=False)
+        chain = iptc.Chain(table, "INPUT")
         self.rule = None
         self.banstart = None
 
@@ -118,8 +132,8 @@ class IPTCBanEntry(object):
     def ban(self, interface): 
         self.banstart = int(time.time())
 
-        self.table = iptc.Table(iptc.Table.FILTER)
-        self.chain = iptc.Chain(iptc.Table(iptc.Table.FILTER), "INPUT")
+        self.table = iptc.Table(iptc.Table.FILTER, autocommit=False)
+        self.chain = iptc.Chain(table, "INPUT")
         rule = iptc.Rule()
         rule.in_interface = interface
         rule.src = self.ipaddress
@@ -132,6 +146,7 @@ class IPTCBanEntry(object):
         self.rule = rule
 
         self.chain.insert_rule(rule)
+        self.table.commit()
 
         return True
 
