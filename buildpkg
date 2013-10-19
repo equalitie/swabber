@@ -1,0 +1,2 @@
+#because life is too short for debs
+fpm -d python-zmq -d python-iptables -d python-daemon -d python-yaml -s python -t deb -v 1.2 ./swabber
