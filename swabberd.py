@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/python
 
 __author__ = "nosmo@nosmo.me"
 
@@ -50,7 +50,7 @@ def runThreads(configpath, verbose):
     cleaner = None
     if config["bantime"] != 0:
         cleaner = BanCleaner(config["bantime"], config["backend"], 
-                             iptables_lock)
+                             iptables_lock, config["interface"])
     banner = BanFetcher(config["bindstring"], 
                         config["interface"], config["backend"], 
                         iptables_lock)

@@ -20,6 +20,10 @@ BINDSTRING = "tcp://127.0.0.1:22620"
 class BanFetcher(threading.Thread):
 
     def subscription(self, message):
+        if len(message) != 2: 
+            logging.debug("ZMQ received invalid message: %s", message)
+            return False
+
         action, ipaddress = message
 
         ipaddress= ipaddress.strip()
@@ -40,7 +44,7 @@ class BanFetcher(threading.Thread):
                 try:
                     if ban.banstart:
                         logging.info("Created ban for %s at %s", ipaddress, thenow)
-                        ban.unban()
+                        ban.unban(self.interface)
                         ban.ban(self.interface)
                     else:
                         ban.ban(self.interface)

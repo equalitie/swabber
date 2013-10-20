@@ -22,18 +22,17 @@ class IPTablesCommandBanEntry(object):
             raise Exception("Couldn't list iptables rules!")
 
         droprules = filter(lambda a: a.startswith("DROP") and "swabber" in a, output.split("\n"))
-        for rule in droprules: 
-            action, proto, opt, src, dest, _, swabber, _ = droprules[0].split()
-            if src == self.ipaddress:
-                if ":" not in swabber: 
-                    raise Exception("Malformed swabber rule in iptables! %s" % swabber)
-                _, start = swabber.split(":")
-                start = start.strip()
+        for rule, start in self.list().iteritems():
+            if rule == self.ipaddress:
                 self.banstart = int(start)
 
     @staticmethod
     def list(timelimit=None): 
         rulesdict = {}
+        status, output = commands.getstatusoutput("/sbin/iptables -L -n")
+        if status: 
+            raise Exception("Couldn't list iptables rules!")
+
         droprules = filter(lambda a: a.startswith("DROP") and "swabber" in a, output.split("\n"))
         for rule in droprules: 
             action, proto, opt, src, dest, _, swabber, _ = droprules[0].split()
@@ -42,24 +41,27 @@ class IPTablesCommandBanEntry(object):
             _, start = swabber.split(":")
             start = int(start.strip())
             if not timelimit or (timelimit and (time.time() - start > timelimit)): 
-                rulesdict[src] = swabber
+                rulesdict[src] = start
 
+        return rulesdict
     
     def ban(self, interface=None): 
         interface_section = "-i %s" % interface if interface else ""
 
         now = int(time.time())
-        command = "iptables -A INPUT -s %s %s -j DROP -m comment --comment \"swabber:%d\"" % (self.ipaddress, interface_section, now)
+        command = "iptables -I INPUT -s %s %s -j DROP -m comment --comment \"swabber:%d\"" % (self.ipaddress, interface_section, now)
         status, output = commands.getstatusoutput(command)
         if status: 
             raise Exception("Couldn't set iptables rule for %s (command %s): %s" % (self.ipaddress, command, output))
         return True
 
-    def unban(self): 
-        command = "iptables -D INPUT -s %s -j DROP -m comment --comment \"swabber%d\"" % (self.ipaddress, self.banstart)
+    def unban(self, interface=None):
+        interface_section = "-i %s" % interface if interface else ""
+ 
+        command = "iptables -D INPUT -s %s -j DROP -m comment --comment \"swabber:%d\" %s" % (self.ipaddress, self.banstart, interface_section)
         status, output = commands.getstatusoutput(command)
         if status:
-            raise Exception("failed to unban IP %s: %s" % (self.ipaddress, output))
+            raise Exception("failed to unban IP %s: %s command %s" % (self.ipaddress, output, command))
         return True
 
     def __repr__(self):
