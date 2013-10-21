@@ -17,11 +17,6 @@ class IPTablesCommandBanEntry(object):
         self.ipaddress = ipaddress
         self.banstart = None
 
-        status, output = commands.getstatusoutput("/sbin/iptables -L -n")
-        if status: 
-            raise Exception("Couldn't list iptables rules!")
-
-        droprules = filter(lambda a: a.startswith("DROP") and "swabber" in a, output.split("\n"))
         for rule, start in self.list().iteritems():
             if rule == self.ipaddress:
                 self.banstart = int(start)
@@ -35,7 +30,7 @@ class IPTablesCommandBanEntry(object):
 
         droprules = filter(lambda a: a.startswith("DROP") and "swabber" in a, output.split("\n"))
         for rule in droprules: 
-            action, proto, opt, src, dest, _, swabber, _ = droprules[0].split()
+            action, proto, opt, src, dest, _, swabber, _ = rule.split()
             if ":" not in swabber: 
                 raise Exception("Malformed swabber rule in iptables! %s" % swabber)
             _, start = swabber.split(":")
