@@ -44,7 +44,7 @@ There are currently only four configurable options:
 
 bantime: <integer>
 -------------
-The number of minutes to hold a ban before unbanning a host. As of the time of writing, this is at the possibly sensible value of 20. It is recommended you set this higher but beware of the ineviable overhead that comes from maintaining huge lists of bans. Setting a bantime of 0 will mean that bans will never be cleaned.
+The number of minutes to hold a ban before unbanning a host. As of the time of writing, this is at the possibly sensible value of three hours. It is recommended you set this higher but beware of the ineviable overhead that comes from maintaining huge lists of bans. Setting a bantime of 0 will mean that bans will never be cleaned.
 
 [Currently](https://github.com/ldx/python-iptables/issues/38) python-iptables can encounter some CPU issues when iterating over huge lists of bans. /etc/hosts.deny can incur some overhead when a huge number of entries is present (64000 bans can incur .1s of connection delay, although a figure this large is not recommended).
 
