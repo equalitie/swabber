@@ -24,9 +24,9 @@ setup(
         "Topic :: Daemons",
         "License :: N(C) License",
         ],
-    scripts = ["swabberd.py"], 
+    scripts = ["swabberd.py"],
     data_files=[
-        ('/etc', ["conf/swabber.yaml"]), 
+        ('/etc', ["conf/swabber.yaml"]),
         ('/etc/init.d/', ["swabberd"])
         ],
     )

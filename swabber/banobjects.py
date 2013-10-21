@@ -12,8 +12,8 @@ class IPTablesCommandBanEntry(object):
     #good question
     #TODO
     fault_exception = Exception
-   
-    def __init__(self, ipaddress): 
+
+    def __init__(self, ipaddress):
         self.ipaddress = ipaddress
         self.banstart = None
 
@@ -22,38 +22,38 @@ class IPTablesCommandBanEntry(object):
                 self.banstart = int(start)
 
     @staticmethod
-    def list(timelimit=None): 
+    def list(timelimit=None):
         rulesdict = {}
         status, output = commands.getstatusoutput("/sbin/iptables -L -n")
-        if status: 
+        if status:
             raise Exception("Couldn't list iptables rules!")
 
         droprules = filter(lambda a: a.startswith("DROP") and "swabber" in a, output.split("\n"))
-        for rule in droprules: 
+        for rule in droprules:
             action, proto, opt, src, dest, _, swabber, _ = rule.split()
-            if ":" not in swabber: 
+            if ":" not in swabber:
                 raise Exception("Malformed swabber rule in iptables! %s" % swabber)
             _, start = swabber.split(":")
             start = int(start.strip())
             print start
-            if not timelimit or (timelimit and (time.time() - start > timelimit)): 
+            if not timelimit or (timelimit and (time.time() - start > timelimit)):
                 rulesdict[src] = start
 
         return rulesdict
-    
-    def ban(self, interface=None): 
+
+    def ban(self, interface=None):
         interface_section = "-i %s" % interface if interface else ""
 
         now = int(time.time())
         command = "iptables -I INPUT -s %s %s -j DROP -m comment --comment \"swabber:%d\"" % (self.ipaddress, interface_section, now)
         status, output = commands.getstatusoutput(command)
-        if status: 
+        if status:
             raise Exception("Couldn't set iptables rule for %s (command %s): %s" % (self.ipaddress, command, output))
         return True
 
     def unban(self, interface=None):
         interface_section = "-i %s" % interface if interface else ""
- 
+
         command = "iptables -D INPUT -s %s -j DROP -m comment --comment \"swabber:%d\" %s" % (self.ipaddress, self.banstart, interface_section)
         status, output = commands.getstatusoutput(command)
         if status:
@@ -61,42 +61,42 @@ class IPTablesCommandBanEntry(object):
         return True
 
     def __repr__(self):
-        return "<BanEntry('%s', %s)>" % (self.ipaddress, 
+        return "<BanEntry('%s', %s)>" % (self.ipaddress,
                                          self.banstart)
 
-class HostsBanEntry(object): 
-    
+class HostsBanEntry(object):
+
     fault_exception = IOError
 
-    def __init__(self, ipaddress): 
+    def __init__(self, ipaddress):
         self.hostsfile = hostsfile.HostsDeny()
         self.ipaddress = ipaddress
         self.banstart = None
-        if ipaddress in self.hostsfile: 
+        if ipaddress in self.hostsfile:
             hostsfileentry = self.hostsfile[ipaddress]
             if hostsfileentry[2] and "swabber" in hostsfileentry[2]:
                 self.banstart = int(hostsfileentry[2].split(":")[1])
 
-    def ban(self, interface=None): 
-        #interface is a dummy 
+    def ban(self, interface=None):
+        #interface is a dummy
         self.banstart = int(time.time())
         comment = "swabber:%s" % self.banstart
         self.hostsfile.add(self.ipaddress, comment=comment)
 
         return True
 
-    def unban(self): 
+    def unban(self):
         self.hostsfile -= self.ipaddress
 
     def __repr__(self):
-        return "<BanEntry('%s', %s)>" % (self.ipaddress, 
+        return "<BanEntry('%s', %s)>" % (self.ipaddress,
                                          self.banstart)
 
-class IPTCBanEntry(object): 
+class IPTCBanEntry(object):
 
     fault_exception = iptc.IPTCError
 
-    def __init__(self, ipaddress): 
+    def __init__(self, ipaddress):
         self.ipaddress = ipaddress
 
         table = iptc.Table(iptc.Table.FILTER, autocommit=False)
@@ -110,7 +110,7 @@ class IPTCBanEntry(object):
                 if rule.matches:
                     comment = rule.matches[0].comment
                     #TODO regexp matching
-                    if "swabber:" in comment: 
+                    if "swabber:" in comment:
                         self.chain = chain
                         self.rule = rule
                         self.banstart = int(comment.split(":")[1].strip('"'))
@@ -119,15 +119,15 @@ class IPTCBanEntry(object):
         #    # We're a new rule
         #    self.banstart = int(time.time())
 
-        if not self.rule: 
+        if not self.rule:
             self.table = None
             self.chain = None
 
     #TODO
     #@staticmethod
-    #def _static_ban(ban, interface): 
+    #def _static_ban(ban, interface):
 
-    def ban(self, interface): 
+    def ban(self, interface):
         self.banstart = int(time.time())
 
         self.table = iptc.Table(iptc.Table.FILTER, autocommit=False)
@@ -148,26 +148,26 @@ class IPTCBanEntry(object):
 
         return True
 
-    def unban(self): 
+    def unban(self):
         if not self.rule:
             return False
         self.chain.delete_rule(self.rule)
         return True
 
     def __repr__(self):
-        return "<BanEntry('%s', %s)>" % (self.ipaddress, 
+        return "<BanEntry('%s', %s)>" % (self.ipaddress,
                                          self.banstart)
 
 entries = {
     "iptables_cmd": IPTablesCommandBanEntry,
-    "iptables": IPTCBanEntry, 
+    "iptables": IPTCBanEntry,
     "hostsfile": HostsBanEntry
     }
 
 BanEntry = HostsBanEntry
 
-def main(): 
+def main():
     pass
 
-if __name__ == "__main__": 
+if __name__ == "__main__":
     main()

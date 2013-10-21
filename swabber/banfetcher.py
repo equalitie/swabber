@@ -20,7 +20,7 @@ BINDSTRING = "tcp://127.0.0.1:22620"
 class BanFetcher(threading.Thread):
 
     def subscription(self, message):
-        if len(message) != 2: 
+        if len(message) != 2:
             logging.debug("ZMQ received invalid message: %s", message)
             return False
 
@@ -28,14 +28,14 @@ class BanFetcher(threading.Thread):
 
         ipaddress= ipaddress.strip()
         ipmatch = re.compile("^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$")
-        if not ipmatch.match(ipaddress): 
+        if not ipmatch.match(ipaddress):
             logging.error("Failed to validate IP address %s - rejecting", ipaddress)
             return False
 
         if action == "swabber_bans":
             logging.debug("Received ban for %s", message[1])
             thenow = datetime.datetime.now()
-            
+
             with self.iptables_lock:
                 ban = self.BanObject(ipaddress)
                 logging.debug("Created banentry for %s", ipaddress)
@@ -49,7 +49,7 @@ class BanFetcher(threading.Thread):
                     else:
                         ban.ban(self.interface)
                         logging.info("Extended ban for %s", ipaddress)
-                        
+
                 except self.BanObject.fault_exception as e:
                     logging.error("Failed to initialise ban - do we lack permissions?: %s", e)
                     raise SystemExit
@@ -59,8 +59,8 @@ class BanFetcher(threading.Thread):
 
 
     #TODO make lock optional
-    def __init__(self, bindstring, 
-                 interface, backend, 
+    def __init__(self, bindstring,
+                 interface, backend,
                  lock):
         self.bindstring = bindstring
         self.interface = interface
@@ -75,36 +75,36 @@ class BanFetcher(threading.Thread):
             self.socket.setsockopt(zmq.RCVHWM, 2000)
         if "SNDHWM" in dir(zmq):
             self.socket.setsockopt(zmq.SNDHWM, 2000)
-        if "HWM" in dir(zmq): 
+        if "HWM" in dir(zmq):
             self.socket.setsockopt(zmq.HWM, 2000)
 
-        # SWAP is removed in zmq :( 
+        # SWAP is removed in zmq :(
         if "SWAP" in dir(zmq):
             self.socket.setsockopt(zmq.SWAP, 200*2**10)
 
         self.socket.setsockopt(zmq.SUBSCRIBE, "swabber_bans")
 
         self.socket.connect(bindstring)
-        
+
         self.iptables_lock = lock
 
         threading.Thread.__init__(self)
 
         subscriber.on_recv(self.subscription)
 
-    def stopIt(self): 
+    def stopIt(self):
         self.loop.stop()
 
     def run(self):
         self.loop = ioloop.IOLoop.instance().start()
 
-if __name__ == "__main__": 
+if __name__ == "__main__":
 
     verbose = False
 
     if verbose:
         mainlogger = logging.getLogger()
-        
+
         logging.basicConfig(level=logging.DEBUG)
         ch = logging.StreamHandler(sys.stdout)
         ch.setLevel(logging.DEBUG)
