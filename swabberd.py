@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/python
 
 __author__ = "nosmo@nosmo.me"
 
@@ -7,7 +7,6 @@ from swabber import BanFetcher
 from swabber import banobjects
 
 import daemon
-import sqlalchemy
 import yaml
 
 import threading
@@ -17,15 +16,15 @@ import optparse
 import os
 import sys
 
-BACKENDS = ["iptables", "hostsfile"]
+BACKENDS = ["iptables", "hostsfile", "iptables_cmd"]
 
-def getConfig(configpath): 
+def getConfig(configpath):
     config_h = open(configpath)
     config = yaml.load(config_h.read())
     config_h.close()
-    
+
     # defaults
-    if "bantime" not in config: 
+    if "bantime" not in config:
         # minutes
         config["bantime"] = 2
     if "bindstring" not in config:
@@ -35,9 +34,9 @@ def getConfig(configpath):
     if "backend" not in config:
         config["backend"] = "iptables"
 
-    if config["backend"] not in BACKENDS: 
-        raise ValueError("%s is not in backends: %s", 
-                         config["backend"], 
+    if config["backend"] not in BACKENDS:
+        raise ValueError("%s is not in backends: %s",
+                         config["backend"],
                          ", ".join(BACKENDS))
 
     return config
@@ -50,11 +49,11 @@ def runThreads(configpath, verbose):
     #TODO make iptables_lock optional
     cleaner = None
     if config["bantime"] != 0:
-        cleaner = BanCleaner(config["bantime"], config["backend"], 
-                             iptables_lock)
-    banner = BanFetcher(config["bindstring"], 
-                        config["interface"], config["backend"], 
-                        iptables_lock, verbose)
+        cleaner = BanCleaner(config["bantime"], config["backend"],
+                             iptables_lock, config["interface"])
+    banner = BanFetcher(config["bindstring"],
+                        config["interface"], config["backend"],
+                        iptables_lock)
     try:
         if config["bantime"] != 0:
             cleaner.start()
@@ -68,29 +67,29 @@ def runThreads(configpath, verbose):
             cleaner.stopIt()
         banner.stopIt()
 
-def main(): 
+def main():
 
 
     parser = optparse.OptionParser()
     parser.add_option("-v", "--verbose", dest="verbose",
-                      help="Be verbose in output, don't daemonise", 
+                      help="Be verbose in output, don't daemonise",
                       action="store_true")
     parser.add_option("-F", "--force", dest="forcerun",
-                      help="Try to run when not root", 
+                      help="Try to run when not root",
                       action="store_true")
 
     parser.add_option("-c", "--config",
-                      action="store", dest="configpath", 
+                      action="store", dest="configpath",
                       default="/etc/swabber.yaml",
                       help="alternate path for configuration file")
-    
+
     (options, args) = parser.parse_args()
 
-    if os.getuid() != 0 and not options.forcerun: 
+    if os.getuid() != 0 and not options.forcerun:
         sys.stderr.write("Not running as I need root access - use -F to force run\n")
         sys.exit(1)
 
-    if not os.path.isfile(options.configpath): 
+    if not os.path.isfile(options.configpath):
         sys.stderr.write("Couldn't load config file %s!\n" % options.configpath)
         sys.exit(1)
 
@@ -100,7 +99,7 @@ def main():
             runThreads(options.configpath, options.verbose)
     else:
         mainlogger = logging.getLogger()
-        
+
         logging.basicConfig(level=logging.DEBUG)
         ch = logging.StreamHandler(sys.stdout)
         ch.setLevel(logging.DEBUG)

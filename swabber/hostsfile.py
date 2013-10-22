@@ -10,7 +10,7 @@ class HostsFile(object):
         self.hosts_data = None
         self.buffer_writes = buffer_writes
 
-        if buffer_writes: 
+        if buffer_writes:
             self.buffer = []
         else:
             self.buffer = None
@@ -19,7 +19,7 @@ class HostsFile(object):
         linedata = []
         with open(self.filepath, "r") as fileobj:
             for line in fileobj.read().split("\n"):
-                if line.startswith("#"): 
+                if line.startswith("#"):
                     continue
 
                 linesplit = line.split()
@@ -33,10 +33,10 @@ class HostsFile(object):
     @staticmethod
     def __render_entry(linesplit):
         commentstr = ""
-        
+
         if linesplit[2] and not linesplit[2].startswith("#"):
             commentstr = "#%s" % linesplit[2]
-        elif linesplit[2]: 
+        elif linesplit[2]:
             commenstr = linesplit[2]
 
         return "%s %s %s" % (
@@ -61,7 +61,7 @@ class HostsFile(object):
                 self.hosts_data[index][2] = comment
                 return self
 
-        if self.buffer_writes: 
+        if self.buffer_writes:
             self.buffer.append(lineentry)
 
         # finally, just add it
@@ -72,7 +72,7 @@ class HostsFile(object):
                     )
         elif self.buffer_writes and len(self.buffer) >= self.buffer_writes:
             print "Paging out writes"
-            for entry in self.buffer: 
+            for entry in self.buffer:
                 with open(self.filepath, "a") as fileobj:
                     fileobj.write(
                         "%s\n" % entry
@@ -154,13 +154,13 @@ class HostsFile(object):
 class HostsDeny(HostsFile):
 
     def __init__(self, buffer_writes=0):
-        HostsFile.__init__(self, "/etc/hosts.deny", 
+        HostsFile.__init__(self, "/etc/hosts.deny",
                            buffer_writes=buffer_writes)
 
 class HostsAllow(HostsFile):
 
     def __init__(self, buffer_writes=0):
-        HostsFile.__init__(self, "/etc/hosts.allow", 
+        HostsFile.__init__(self, "/etc/hosts.allow",
                            buffer_writes=buffer_writes)
 
 if __name__ == "__main__":
