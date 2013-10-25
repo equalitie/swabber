@@ -52,7 +52,7 @@ class BanFetcher(threading.Thread):
 
                 except self.BanObject.fault_exception as e:
                     logging.error("Failed to initialise ban - do we lack permissions?: %s", e)
-                    raise SystemExit
+                    #raise SystemExit
 
         else:
             logging.error("Got an invalid message header: %s", message)
