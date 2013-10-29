@@ -1,4 +1,6 @@
 bantime: 20
-bindstring: tcp://127.0.0.1:22620
+bindstrings:
+  - tcp://127.0.0.1:22620
+  - tcp://127.0.0.1:22621
 interface: eth+
 backend: iptables_cmd

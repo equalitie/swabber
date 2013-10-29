@@ -49,9 +49,9 @@ The number of minutes to hold a ban before unbanning a host. As of the time of w
 [Currently](https://github.com/ldx/python-iptables/issues/38) python-iptables can encounter some CPU issues when iterating over huge lists of bans. /etc/hosts.deny can incur some overhead when a huge number of entries is present (64000 bans can incur .1s of connection delay, although a figure this large is not recommended).
 
 
-bindstring: <ZMQ connection URI>
+bindstrings: [<ZMQ connection URI>...]
 -------------
-The string to subscribe to bans on. This defaults to <code>tcp://127.0.0.1:22620</code> and won't really be required to be configured for day to day operations. Those who choose to hack around with Swabber may get some use out of this however. Caution is __strongly__ advised when using strings with IP addresses other than 127.0.0.1 - Swabber offers no authentication on this interface by design and an attacker with half a brain will probably ban stuff for fun.
+A list of strings to subscribe to bans on. This defaults to <code>[tcp://127.0.0.1:22620]</code> and won't really be required to be configured for day to day operations. Those who choose to hack around with Swabber may get some use out of this however. To use multiple applications with Swabber, use multiple bindstrings. Caution is __strongly__ advised when using strings with IP addresses other than 127.0.0.1 - Swabber offers no authentication on this interface by design and an attacker with half a brain will probably ban stuff for fun.
 
 interface: <iptables match>
 -------------

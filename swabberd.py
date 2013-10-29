@@ -27,8 +27,8 @@ def getConfig(configpath):
     if "bantime" not in config:
         # minutes
         config["bantime"] = 2
-    if "bindstring" not in config:
-        config["bindstring"] = "tcp://127.0.0.1:22620"
+    if "bindstrings" not in config:
+        config["bindstrings"] = ["tcp://127.0.0.1:22620"]
     if "interface" not in config:
         config["interface"] = "eth+"
     if "backend" not in config:
@@ -51,7 +51,7 @@ def runThreads(configpath, verbose):
     if config["bantime"] != 0:
         cleaner = BanCleaner(config["bantime"], config["backend"],
                              iptables_lock, config["interface"])
-    banner = BanFetcher(config["bindstring"],
+    banner = BanFetcher(config["bindstrings"],
                         config["interface"], config["backend"],
                         iptables_lock)
     try:
