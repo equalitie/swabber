@@ -6,6 +6,7 @@ from swabber import BanCleaner
 from swabber import BanFetcher
 from swabber import banobjects
 
+from daemon.pidlockfile import PIDLockFile
 import daemon
 import yaml
 
@@ -94,7 +95,7 @@ def main():
         sys.exit(1)
 
     if not options.verbose:
-        with daemon.DaemonContext(pidfile=lockfile.FileLock('/var/run/swabber.pid')):
+        with daemon.DaemonContext(pidfile = PIDLockFile('/var/run/swabber.pid')):
             logging.info("Starting swabber in daemon mode")
             runThreads(options.configpath, options.verbose)
     else:
