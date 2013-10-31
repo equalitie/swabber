@@ -35,7 +35,6 @@ class IPTablesCommandBanEntry(object):
                 raise Exception("Malformed swabber rule in iptables! %s" % swabber)
             _, start = swabber.split(":")
             start = int(start.strip())
-            print start
             if not timelimit or (timelimit and (time.time() - start > timelimit)):
                 rulesdict[src] = start
 
