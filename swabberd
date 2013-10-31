@@ -16,7 +16,7 @@
 # place the daemon scripts in a folder accessible by root. /usr/local/sbin is a good idea
 
 PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
-DAEMON=/usr/bin/swabberd.py
+DAEMON=/usr/local/bin/swabberd.py
 NAME=swabberd
 DESC="Swabber daemon"
 
@@ -33,7 +33,7 @@ case "$1" in
 		    ;;
   stop)
   echo -n "Stopping $DESC: "
-  PID==$(ps axu | grep swabberd.py | grep -v grep | awk '{print $2}')
+  PID=$(ps axu | grep swabberd.py | grep -v grep | awk '{print $2}')
   kill -9 $PID
   echo "$NAME."
   ;;
