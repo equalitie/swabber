@@ -39,6 +39,7 @@ myip = "10.0.0.1"
 whitelist = [
     myip,
     "127.0.0.1",
+    "0.0.0.0"
     ]
 
 def parse_line(section):
