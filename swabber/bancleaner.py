@@ -78,7 +78,7 @@ class BanCleaner(threading.Thread):
         self.bantime = bantime
         self.interface = interface
         self.BanObject = banobjects.entries[backend]
-        self.timelimit = bantime * 60
+        self.timelimit = bantime
         threading.Thread.__init__(self)
         self.running = False
 
@@ -100,7 +100,7 @@ class BanCleaner(threading.Thread):
             try:
                 self.cleanBans(self.interface)
                 time.sleep(60)
-            except Exception as e: 
+            except Exception as e:
                 logging.error("Uncaught exception in cleaner! %s", str(e))
                 traceback.print_exc()
                 #self.running = False
