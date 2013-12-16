@@ -1,19 +1,16 @@
 #! /bin/sh
 
 ### BEGIN INIT INFO
-# Provides:          swabebr
-# Required-Start:    
-# Required-Stop:     
+# Provides:          swabber
+# Required-Start:    $remote_fs $syslog
+# Required-Stop:     $remote_fs $syslog
 # Default-Start:     2 3 4 5
 # Default-Stop:      0 1 6
-# Short-Description: Start daemon at boot time
-# Description:       Enable service provided by daemon.
+# Short-Description: Swabber banning agent
+# Description:       Swabber accepts issued bans from other services and unbans them
 ### END INIT INFO
 
-# example python daemon starter script
-# based on skeleton from Debian GNU/Linux
-# cliechti@gmx.net
-# place the daemon scripts in a folder accessible by root. /usr/local/sbin is a good idea
+# borrows from the example init script by cliechti@gmx.net
 
 PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
 DAEMON=/usr/local/bin/swabberd.py
@@ -21,7 +18,7 @@ NAME=swabberd
 DESC="Swabber daemon"
 
 test -f $DAEMON || exit 0
-
+. /lib/lsb/init-functions
 set -e
 
 case "$1" in
