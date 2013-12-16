@@ -4,50 +4,43 @@ __author__ = "nosmo@nosmo.me"
 
 from swabber import BanCleaner
 from swabber import BanFetcher
-from swabber import banobjects
 
-from daemon.pidlockfile import PIDLockFile
-import daemon
 import yaml
 
-import threading
-import lockfile
 import logging
 import optparse
 import os
+import signal
 import sys
+import threading
 
 BACKENDS = ["iptables", "hostsfile", "iptables_cmd"]
 
-def getConfig(configpath):
-    config_h = open(configpath)
-    config = yaml.load(config_h.read())
-    config_h.close()
+default_config = {
+    "bantime": 120,
+    "bindstrings": ["tcp://127.0.0.1:22620"],
+    "interface": "eth+",
+    "backend": "iptables",
+}
 
-    # defaults
-    if "bantime" not in config:
-        # minutes
-        config["bantime"] = 2
-    if "bindstrings" not in config:
-        config["bindstrings"] = ["tcp://127.0.0.1:22620"]
-    if "interface" not in config:
-        config["interface"] = "eth+"
-    if "backend" not in config:
-        config["backend"] = "iptables"
+def getConfig(configpath):
+    config = default_config
+
+    with open(configpath) as config_h:
+        config.update(yaml.load(config_h.read()))
 
     if config["backend"] not in BACKENDS:
         raise ValueError("%s is not in backends: %s",
                          config["backend"],
                          ", ".join(BACKENDS))
-
     return config
 
-def runThreads(configpath, verbose):
-    config = getConfig(configpath)
+def runThreads(configpath):
 
+    config = getConfig(configpath)
+    #TODO make iptables_lock optional
     iptables_lock = threading.Lock()
 
-    #TODO make iptables_lock optional
     cleaner = None
     if config["bantime"] != 0:
         cleaner = BanCleaner(config["bantime"], config["backend"],
@@ -55,6 +48,15 @@ def runThreads(configpath, verbose):
     banner = BanFetcher(config["bindstrings"],
                         config["interface"], config["backend"],
                         iptables_lock)
+
+    def handleSignal(signum, frame):
+        if signum == 15 or signum == 16:
+            banner.stopIt()
+            if config["bantime"]:
+                cleaner.stopIt()
+            logging.warning("Closing on SIGTERM")
+    signal.signal(signal.SIGTERM, handleSignal)
+
     try:
         if config["bantime"] != 0:
             cleaner.start()
@@ -64,7 +66,7 @@ def runThreads(configpath, verbose):
     except Exception as e:
         print "Exception %s" % e
         logging.error("Swabber exiting on exception %s!", str(e))
-        if config["bantime"] != 0:
+        if config["bantime"]:
             cleaner.stopIt()
         banner.stopIt()
 
@@ -95,9 +97,16 @@ def main():
         sys.exit(1)
 
     if not options.verbose:
-        with daemon.DaemonContext(pidfile = PIDLockFile('/var/run/swabber.pid')):
-            logging.info("Starting swabber in daemon mode")
-            runThreads(options.configpath, options.verbose)
+        if os.fork() != 0:
+            raise SystemExit("Couldn't fork!")
+        if os.fork() != 0:
+            raise SystemExit("Couldn't fork!")
+
+        with open("/var/run/swabber.pid", "w") as mypid:
+            mypid.write(str(os.getpid()))
+
+        logging.info("Starting swabber in daemon mode")
+        runThreads(options.configpath)
     else:
         mainlogger = logging.getLogger()
 
@@ -107,7 +116,7 @@ def main():
         formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
         ch.setFormatter(formatter)
         mainlogger.addHandler(ch)
-        runThreads(options.configpath, options.verbose)
+        runThreads(options.configpath)
 
 if __name__ == "__main__":
     main()
