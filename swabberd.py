@@ -88,6 +88,16 @@ def main():
 
     (options, args) = parser.parse_args()
 
+    if options.verbose:
+        mainlogger = logging.getLogger()
+
+        logging.basicConfig(level=logging.DEBUG)
+        ch = logging.StreamHandler(sys.stdout)
+        ch.setLevel(logging.DEBUG)
+        formatter = logging.Formatter('swabber %(asctime)s - %(name)s - %(levelname)s - %(message)s')
+        ch.setFormatter(formatter)
+        mainlogger.addHandler(ch)
+
     if os.getuid() != 0 and not options.forcerun:
         sys.stderr.write("Not running as I need root access - use -F to force run\n")
         sys.exit(1)
@@ -102,21 +112,11 @@ def main():
         if os.fork() != 0:
             raise SystemExit("Couldn't fork!")
 
-        with open("/var/run/swabber.pid", "w") as mypid:
+        with open("/var/run/swabberd.pid", "w") as mypid:
             mypid.write(str(os.getpid()))
 
         logging.info("Starting swabber in daemon mode")
-        runThreads(options.configpath)
-    else:
-        mainlogger = logging.getLogger()
-
-        logging.basicConfig(level=logging.DEBUG)
-        ch = logging.StreamHandler(sys.stdout)
-        ch.setLevel(logging.DEBUG)
-        formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-        ch.setFormatter(formatter)
-        mainlogger.addHandler(ch)
-        runThreads(options.configpath)
+    runThreads(options.configpath)
 
 if __name__ == "__main__":
     main()
