@@ -1,6 +1,8 @@
+---
 bantime: 18000
 bindstrings:
   - tcp://127.0.0.1:22620
   - tcp://127.0.0.1:22621
 interface: eth+
 backend: iptables_cmd
+logfile: /var/log/swabber.log

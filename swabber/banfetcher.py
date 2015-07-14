@@ -14,48 +14,9 @@ import threading
 
 import banobjects
 
-BINDSTRINGS = ["tcp://127.0.0.1:22620"]
+BIND_STRINGS = ["tcp://127.0.0.1:22620"]
 
 class BanFetcher(threading.Thread):
-
-    def subscription(self, message):
-        if len(message) != 2:
-            logging.debug("ZMQ received invalid message: %s", message)
-            return False
-
-        action, ipaddress = message
-
-        ipaddress= ipaddress.strip()
-        ipmatch = re.compile("^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$")
-        if not ipmatch.match(ipaddress):
-            logging.error("Failed to validate IP address %s - rejecting", ipaddress)
-            return False
-
-        if action == "swabber_bans":
-            logging.debug("Received ban for %s", message[1])
-            thenow = datetime.datetime.now()
-
-            with self.iptables_lock:
-                ban = self.BanObject(ipaddress)
-                logging.debug("Created banentry for %s", ipaddress)
-
-                logging.debug("Fetcher got iptables lock")
-                try:
-                    if ban.banstart:
-                        logging.info("Created ban for %s at %s", ipaddress, thenow)
-                        ban.unban(self.interface)
-                        ban.ban(self.interface)
-                    else:
-                        ban.ban(self.interface)
-                        logging.info("Extended ban for %s", ipaddress)
-
-                except self.BanObject.fault_exception as e:
-                    logging.error("Failed to initialise ban - do we lack permissions?: %s", e)
-                    #raise SystemExit
-
-        else:
-            logging.error("Got an invalid message header: %s", message)
-
 
     #TODO make lock optional
     def __init__(self, bindstrings,
@@ -64,7 +25,7 @@ class BanFetcher(threading.Thread):
         self.bindstrings = bindstrings
         self.interface = interface
         self.backend = backend
-        self.BanObject = banobjects.entries[backend]
+        self.ban_object = banobjects.entries[backend]
 
         self.sockets = {}
 
@@ -93,15 +54,51 @@ class BanFetcher(threading.Thread):
 
         threading.Thread.__init__(self)
 
+    def subscription(self, message):
+        if len(message) != 2:
+            logging.debug("ZMQ received invalid message: %s", message)
+            return False
 
-    def stopIt(self):
+        action, ipaddress = message
+
+        ipaddress = ipaddress.strip()
+        ipmatch = re.compile("^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$")
+        if not ipmatch.match(ipaddress):
+            logging.error("Failed to validate IP address %s - rejecting", ipaddress)
+            return False
+
+        if action == "swabber_bans":
+            logging.debug("Received ban for %s", message[1])
+            thenow = datetime.datetime.now()
+
+            with self.iptables_lock:
+                ban = self.ban_object(ipaddress)
+                logging.debug("Created banentry for %s", ipaddress)
+
+                logging.debug("Fetcher got iptables lock")
+                try:
+                    if ban.banstart:
+                        logging.info("Created ban for %s at %s", ipaddress, thenow)
+                        ban.unban(self.interface)
+                        ban.ban(self.interface)
+                    else:
+                        ban.ban(self.interface)
+                        logging.info("Extended ban for %s", ipaddress)
+
+                except self.ban_object.fault_exception as e:
+                    logging.error("Failed to initialise ban - do we lack permissions?: %s", e)
+                    #raise SystemExit
+
+        else:
+            logging.error("Got an invalid message header: %s", message)
+
+    def stop_running(self):
         self.loop.stop()
 
     def run(self):
         self.loop = ioloop.IOLoop.instance().start()
 
-if __name__ == "__main__":
-
+def main():
     verbose = False
 
     if verbose:
@@ -114,5 +111,9 @@ if __name__ == "__main__":
         ch.setFormatter(formatter)
         mainlogger.addHandler(ch)
 
-    bfetcher = BanFetcher( BINDSTRING, "eth+", "iptables", threading.Lock())
+    bfetcher = BanFetcher(BIND_STRINGS[0], "eth+", "iptables", threading.Lock())
     bfetcher.run()
+
+if __name__ == "__main__":
+
+    main()

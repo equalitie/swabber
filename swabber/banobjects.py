@@ -9,8 +9,6 @@ import hostsfile
 
 class IPTablesCommandBanEntry(object):
 
-    #good question
-    #TODO
     fault_exception = Exception
 
     def __init__(self, ipaddress):
@@ -28,7 +26,7 @@ class IPTablesCommandBanEntry(object):
         if status:
             raise Exception("Couldn't list iptables rules!")
 
-        droprules = filter(lambda a: a.startswith("DROP") and "swabber" in a, output.split("\n"))
+        droprules = [ i for i in output.split("\n") if i.startswith("DROP") and "swabber" in i ]
         for rule in droprules:
             action, proto, opt, src, dest, _, swabber, _ = rule.split()
             if ":" not in swabber:
@@ -44,10 +42,13 @@ class IPTablesCommandBanEntry(object):
         interface_section = "-i %s" % interface if interface else ""
 
         now = int(time.time())
-        command = "iptables -I INPUT -s %s %s -j DROP -m comment --comment \"swabber:%d\"" % (self.ipaddress, interface_section, now)
+        command = ("iptables -I INPUT -s %s %s -j DROP -m comment"
+                   " --comment \"swabber:%d\"") % (
+                       self.ipaddress, interface_section, now)
         status, output = commands.getstatusoutput(command)
         if status:
-            raise Exception("Couldn't set iptables rule for %s (command %s): %s" % (self.ipaddress, command, output))
+            raise Exception("Couldn't set iptables rule for %s (command %s): %s" % (
+                self.ipaddress, command, output))
         return True
 
     def unban(self, interface=None):

@@ -1,5 +1,16 @@
 #!/usr/bin/python
 
+"""
+
+ Swabber is a daemon for management of IP bans. The bans are
+accepted over a 0mq interface (or interfaces) and are expired after a
+period of time.
+
+I wrote this code in a simpler time, and now I am quite ashamed
+of a lot of it. It all needs a rewrite.
+
+"""
+
 __author__ = "nosmo@nosmo.me"
 
 from swabber import BanCleaner
@@ -16,18 +27,19 @@ import threading
 
 BACKENDS = ["iptables", "hostsfile", "iptables_cmd"]
 
-default_config = {
+DEFAULT_CONFIG = {
     "bantime": 120,
     "bindstrings": ["tcp://127.0.0.1:22620"],
     "interface": "eth+",
     "backend": "iptables",
+    "logpath": "/var/log/swabber.log"
 }
 
-def getConfig(configpath):
-    config = default_config
+def get_config(configpath):
+    config = DEFAULT_CONFIG
 
     with open(configpath) as config_h:
-        config.update(yaml.load(config_h.read()))
+        config.update(yaml.safe_load(config_h.read()))
 
     if config["backend"] not in BACKENDS:
         raise ValueError("%s is not in backends: %s",
@@ -35,9 +47,8 @@ def getConfig(configpath):
                          ", ".join(BACKENDS))
     return config
 
-def runThreads(configpath):
+def run_threads(config):
 
-    config = getConfig(configpath)
     #TODO make iptables_lock optional
     iptables_lock = threading.Lock()
 
@@ -49,13 +60,13 @@ def runThreads(configpath):
                         config["interface"], config["backend"],
                         iptables_lock)
 
-    def handleSignal(signum, frame):
+    def handle_signal(signum, frame):
         if signum == 15 or signum == 16:
-            banner.stopIt()
+            banner.stop_running()
             if config["bantime"]:
                 cleaner.stopIt()
             logging.warning("Closing on SIGTERM")
-    signal.signal(signal.SIGTERM, handleSignal)
+    signal.signal(signal.SIGTERM, handle_signal)
 
     try:
         if config["bantime"] != 0:
@@ -67,11 +78,10 @@ def runThreads(configpath):
         print "Exception %s" % e
         logging.error("Swabber exiting on exception %s!", str(e))
         if config["bantime"]:
-            cleaner.stopIt()
+            cleaner.stop_running()
         banner.stopIt()
 
 def main():
-
 
     parser = optparse.OptionParser()
     parser.add_option("-v", "--verbose", dest="verbose",
@@ -87,6 +97,7 @@ def main():
                       help="alternate path for configuration file")
 
     (options, args) = parser.parse_args()
+    config = get_config(options.configpath)
 
     if options.verbose:
         mainlogger = logging.getLogger()
@@ -94,9 +105,17 @@ def main():
         logging.basicConfig(level=logging.DEBUG)
         ch = logging.StreamHandler(sys.stdout)
         ch.setLevel(logging.DEBUG)
-        formatter = logging.Formatter('swabber %(asctime)s - %(name)s - %(levelname)s - %(message)s')
-        ch.setFormatter(formatter)
+        ch.setFormatter(logging.Formatter(
+            'swabber (%(process)d): %(levelname)s %(message)s'))
         mainlogger.addHandler(ch)
+    else:
+        # Set up logging
+        logger = logging.getLogger()
+        logger.setLevel(logging.INFO)
+        logfile_handler = logging.handlers.WatchedFileHandler(config["logpath"])
+        logfile_handler.setFormatter(logging.Formatter(
+            'swabber (%(process)d): %(levelname)s %(message)s'))
+        logger.addHandler(logfile_handler)
 
     if os.getuid() != 0 and not options.forcerun:
         sys.stderr.write("Not running as I need root access - use -F to force run\n")
@@ -116,7 +135,8 @@ def main():
             mypid.write(str(os.getpid()))
 
         logging.info("Starting swabber in daemon mode")
-    runThreads(options.configpath)
+
+    run_threads(config)
 
 if __name__ == "__main__":
     main()
