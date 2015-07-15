@@ -77,13 +77,16 @@ class BanFetcher(threading.Thread):
 
                 logging.debug("Fetcher got iptables lock")
                 try:
-                    if ban.banstart:
-                        logging.info("Created ban for %s at %s", ipaddress, thenow)
-                        ban.unban(self.interface)
+                    if ban.new_ban:
+                        logging.info("Created ban for %s", ipaddress)
                         ban.ban(self.interface)
                     else:
+                        oldstart = ban.banstart
+                        ban.unban(self.interface)
                         ban.ban(self.interface)
-                        logging.info("Extended ban for %s", ipaddress)
+                        newstart = ban.banstart
+                        logging.info("Extended ban for %s from %d to %d", ipaddress, 
+                                     oldstart, newstart)
 
                 except self.ban_object.fault_exception as e:
                     logging.error("Failed to initialise ban - do we lack permissions?: %s", e)
