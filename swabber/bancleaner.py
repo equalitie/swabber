@@ -68,6 +68,7 @@ class BanCleaner(threading.Thread):
     def _iptables_cmd_clean_bans(self, interface=None):
         for rule in banobjects.IPTablesCommandBanEntry.list(self.timelimit):
             ruletodelete = banobjects.IPTablesCommandBanEntry(rule)
+            logging.info("Unbanning %s as the ban has expired", ruletodelete.ipaddress)
             ruletodelete.unban(interface)
 
     #TODO make lock optional
