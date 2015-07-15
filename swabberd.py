@@ -1,53 +1,99 @@
 #!/usr/bin/python
 
+"""
+
+ Swabber is a daemon for management of IP bans. The bans are
+accepted over a 0mq interface (or interfaces) and are expired after a
+period of time.
+
+I wrote this code in a simpler time, and now I am quite ashamed
+of a lot of it. It all needs a rewrite.
+
+"""
+
 __author__ = "nosmo@nosmo.me"
 
 from swabber import BanCleaner
 from swabber import BanFetcher
-from swabber import banobjects
 
-from daemon.pidlockfile import PIDLockFile
-import daemon
 import yaml
 
-import threading
-import lockfile
 import logging
 import optparse
 import os
+import signal
 import sys
+import threading
 
 BACKENDS = ["iptables", "hostsfile", "iptables_cmd"]
 
-def getConfig(configpath):
-    config_h = open(configpath)
-    config = yaml.load(config_h.read())
-    config_h.close()
+DEFAULT_CONFIG = {
+    "bantime": 120,
+    "bindstrings": ["tcp://127.0.0.1:22620"],
+    "interface": "eth+",
+    "backend": "iptables",
+    "logpath": "/var/log/swabber.log"
+}
 
-    # defaults
-    if "bantime" not in config:
-        # minutes
-        config["bantime"] = 2
-    if "bindstrings" not in config:
-        config["bindstrings"] = ["tcp://127.0.0.1:22620"]
-    if "interface" not in config:
-        config["interface"] = "eth+"
-    if "backend" not in config:
-        config["backend"] = "iptables"
+def daemon_setup():
+    # First fork
+    try:
+        pid = os.fork()
+        if pid > 0:
+            # exit first parent
+            sys.exit(0)
+    except OSError, e:
+        sys.stderr.write("fork #1 failed: %d (%s)\n" % (e.errno, e.strerror))
+        sys.exit(1)
+
+    # Don't hang onto any files accidentally
+    os.chdir("/")
+    # Decouple from our environment
+    os.setsid()
+    os.umask(0)
+
+    # Second fork
+    try:
+        pid = os.fork()
+        if pid > 0:
+            # exit if second parent
+            sys.exit(0)
+    except OSError, e:
+        sys.stderr.write("Second fork failed: %d (%s)\n" % (e.errno, e.strerror))
+        sys.exit(1)
+
+    # redirect standard file descriptors
+    sys.stdout.flush()
+    sys.stderr.flush()
+    si = file("/dev/null", 'r')
+    so = file("/dev/null", 'a+')
+    #se = file("/dev/null", 'a+', 0)
+    os.dup2(si.fileno(), sys.stdin.fileno())
+    os.dup2(so.fileno(), sys.stdout.fileno())
+    #os.dup2(se.fileno(), sys.stderr.fileno())
+
+    # write pidfile
+    #atexit.register(self.delpid)
+    #pid = str(os.getpid())
+    #file(self.pidfile,'w+').write("%s\n" % pid)
+
+def get_config(configpath):
+    config = DEFAULT_CONFIG
+
+    with open(configpath) as config_h:
+        config.update(yaml.safe_load(config_h.read()))
 
     if config["backend"] not in BACKENDS:
         raise ValueError("%s is not in backends: %s",
                          config["backend"],
                          ", ".join(BACKENDS))
-
     return config
 
-def runThreads(configpath, verbose):
-    config = getConfig(configpath)
-
-    iptables_lock = threading.Lock()
+def run_threads(config):
 
     #TODO make iptables_lock optional
+    iptables_lock = threading.Lock()
+
     cleaner = None
     if config["bantime"] != 0:
         cleaner = BanCleaner(config["bantime"], config["backend"],
@@ -55,6 +101,15 @@ def runThreads(configpath, verbose):
     banner = BanFetcher(config["bindstrings"],
                         config["interface"], config["backend"],
                         iptables_lock)
+
+    def handle_signal(signum, frame):
+        if signum == 15 or signum == 16:
+            banner.stop_running()
+            if config["bantime"]:
+                cleaner.stopIt()
+            logging.warning("Closing on SIGTERM")
+    signal.signal(signal.SIGTERM, handle_signal)
+
     try:
         if config["bantime"] != 0:
             cleaner.start()
@@ -64,12 +119,11 @@ def runThreads(configpath, verbose):
     except Exception as e:
         print "Exception %s" % e
         logging.error("Swabber exiting on exception %s!", str(e))
-        if config["bantime"] != 0:
-            cleaner.stopIt()
+        if config["bantime"]:
+            cleaner.stop_running()
         banner.stopIt()
 
 def main():
-
 
     parser = optparse.OptionParser()
     parser.add_option("-v", "--verbose", dest="verbose",
@@ -85,6 +139,25 @@ def main():
                       help="alternate path for configuration file")
 
     (options, args) = parser.parse_args()
+    config = get_config(options.configpath)
+
+    if options.verbose:
+        mainlogger = logging.getLogger()
+
+        logging.basicConfig(level=logging.DEBUG)
+        ch = logging.StreamHandler(sys.stdout)
+        ch.setLevel(logging.DEBUG)
+        ch.setFormatter(logging.Formatter(
+            'swabber (%(process)d): %(levelname)s %(message)s'))
+        mainlogger.addHandler(ch)
+    else:
+        # Set up logging
+        logger = logging.getLogger()
+        logger.setLevel(logging.INFO)
+        logfile_handler = logging.handlers.WatchedFileHandler(config["logpath"])
+        logfile_handler.setFormatter(logging.Formatter(
+            'swabber (%(process)d) %(asctime)s: %(levelname)s %(message)s'))
+        logger.addHandler(logfile_handler)
 
     if os.getuid() != 0 and not options.forcerun:
         sys.stderr.write("Not running as I need root access - use -F to force run\n")
@@ -95,19 +168,15 @@ def main():
         sys.exit(1)
 
     if not options.verbose:
-        with daemon.DaemonContext(pidfile = PIDLockFile('/var/run/swabber.pid')):
-            logging.info("Starting swabber in daemon mode")
-            runThreads(options.configpath, options.verbose)
-    else:
-        mainlogger = logging.getLogger()
 
-        logging.basicConfig(level=logging.DEBUG)
-        ch = logging.StreamHandler(sys.stdout)
-        ch.setLevel(logging.DEBUG)
-        formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-        ch.setFormatter(formatter)
-        mainlogger.addHandler(ch)
-        runThreads(options.configpath, options.verbose)
+        daemon_setup()
+
+        with open("/var/run/swabberd.pid", "w") as mypid:
+            mypid.write(str(os.getpid()))
+
+        logging.info("Starting swabber in daemon mode")
+
+    run_threads(config)
 
 if __name__ == "__main__":
     main()

@@ -8,7 +8,7 @@ XS-Python-Version: current
 
 Package: python-swabber
 Architecture: all
-Depends: ${misc:Depends}, ${python:Depends}, python-zmq, python-sqlalchemy, python-iptables, python-daemon, python-yaml
+Depends: ${misc:Depends}, ${python:Depends}, python-zmq, python-iptables, python-yaml
 XB-Python-Version: ${python:Versions}
 Provides: ${python:Provides}
 Description: Pubsub-based host banning interface

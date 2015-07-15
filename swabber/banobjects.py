@@ -5,30 +5,45 @@ __author__ = "nosmo@nosmo.me"
 import iptc
 import time
 import commands
+import logging
 import hostsfile
 
 class IPTablesCommandBanEntry(object):
 
-    #good question
-    #TODO
     fault_exception = Exception
 
     def __init__(self, ipaddress):
         self.ipaddress = ipaddress
         self.banstart = None
 
+        self.new_ban = True
+
         for rule, start in self.list().iteritems():
             if rule == self.ipaddress:
                 self.banstart = int(start)
+                self.new_ban = False
 
     @staticmethod
-    def list(timelimit=None):
-        rulesdict = {}
-        status, output = commands.getstatusoutput("/sbin/iptables -L -n")
-        if status:
-            raise Exception("Couldn't list iptables rules!")
+    def list(timelimit=None, wait=True):
+        # timelimit - limit the listing to entries in the list
+        # $timelimit seconds
 
-        droprules = filter(lambda a: a.startswith("DROP") and "swabber" in a, output.split("\n"))
+        # wait - use the iptables wait to get a lock for listing. Will
+        # slow down some operations, but means they will definitely
+        # happen.
+
+        iptables_command = "/sbin/iptables -L -n"
+        if wait: 
+            iptables_command += " -w"
+
+        rulesdict = {}
+        status, output = commands.getstatusoutput(iptables_command)
+        if status:
+            # This usually indicates that there's an xtables lock
+            logging.error("Couldn't list iptables rules! %s", output)
+            return rulesdict
+
+        droprules = [ i for i in output.split("\n") if i.startswith("DROP") and "swabber" in i ]
         for rule in droprules:
             action, proto, opt, src, dest, _, swabber, _ = rule.split()
             if ":" not in swabber:
@@ -40,21 +55,33 @@ class IPTablesCommandBanEntry(object):
 
         return rulesdict
 
-    def ban(self, interface=None):
+    def ban(self, interface=None, wait=True):
         interface_section = "-i %s" % interface if interface else ""
 
         now = int(time.time())
-        command = "iptables -I INPUT -s %s %s -j DROP -m comment --comment \"swabber:%d\"" % (self.ipaddress, interface_section, now)
-        status, output = commands.getstatusoutput(command)
+        iptables_command = ("iptables -I INPUT -s %s %s -j DROP -m comment"
+                   " --comment \"swabber:%d\"") % (
+                       self.ipaddress, interface_section, now)
+
+        if wait: 
+            iptables_command += " -w"
+
+        status, output = commands.getstatusoutput(iptables_command)
+        self.banstart = now
+        
         if status:
-            raise Exception("Couldn't set iptables rule for %s (command %s): %s" % (self.ipaddress, command, output))
+            raise Exception("Couldn't set iptables rule for %s (command %s): %s" % (
+                self.ipaddress, command, output))
         return True
 
-    def unban(self, interface=None):
+    def unban(self, interface=None, wait=True):
         interface_section = "-i %s" % interface if interface else ""
 
-        command = "iptables -D INPUT -s %s -j DROP -m comment --comment \"swabber:%d\" %s" % (self.ipaddress, self.banstart, interface_section)
-        status, output = commands.getstatusoutput(command)
+        iptables_command = "iptables -D INPUT -s %s -j DROP -m comment --comment \"swabber:%d\" %s" % (self.ipaddress, self.banstart, interface_section)
+        if wait: 
+            iptables_command += " -w"
+
+        status, output = commands.getstatusoutput(iptables_command)
         if status:
             raise Exception("failed to unban IP %s: %s command %s" % (self.ipaddress, output, command))
         return True
@@ -71,10 +98,12 @@ class HostsBanEntry(object):
         self.hostsfile = hostsfile.HostsDeny()
         self.ipaddress = ipaddress
         self.banstart = None
+        self.new_ban = True
         if ipaddress in self.hostsfile:
             hostsfileentry = self.hostsfile[ipaddress]
             if hostsfileentry[2] and "swabber" in hostsfileentry[2]:
                 self.banstart = int(hostsfileentry[2].split(":")[1])
+                self.new_ban = False
 
     def ban(self, interface=None):
         #interface is a dummy
@@ -102,6 +131,7 @@ class IPTCBanEntry(object):
         chain = iptc.Chain(table, "INPUT")
         self.rule = None
         self.banstart = None
+        self.new_ban = True
 
         rules = chain.rules
         for rule in rules:
@@ -113,6 +143,7 @@ class IPTCBanEntry(object):
                         self.chain = chain
                         self.rule = rule
                         self.banstart = int(comment.split(":")[1].strip('"'))
+                        self.new_ban = False
 
         #if not self.rule and not self.banstart:
         #    # We're a new rule

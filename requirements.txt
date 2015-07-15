@@ -1,5 +1,3 @@
 python-iptables
 pyzmq
-SQLAlchemy
-python-daemon
 yaml

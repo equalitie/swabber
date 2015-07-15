@@ -4,11 +4,9 @@ import commands
 import threading
 import os
 import tempfile
-from swabber import BanEntry, createDB
+from swabber import BanEntry 
 from swabber import BanCleaner
 from swabber import BanFetcher
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
 
 import zmq
 from zmq.eventloop import ioloop, zmqstream

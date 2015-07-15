@@ -1,19 +1,16 @@
 #! /bin/sh
 
 ### BEGIN INIT INFO
-# Provides:          swabebr
-# Required-Start:    
-# Required-Stop:     
+# Provides:          swabber
+# Required-Start:    $syslog
+# Required-Stop:     $syslog
 # Default-Start:     2 3 4 5
 # Default-Stop:      0 1 6
-# Short-Description: Start daemon at boot time
-# Description:       Enable service provided by daemon.
+# Short-Description: Swabber banning agent
+# Description:       Swabber accepts issued bans from other services and unbans them
 ### END INIT INFO
 
-# example python daemon starter script
-# based on skeleton from Debian GNU/Linux
-# cliechti@gmx.net
-# place the daemon scripts in a folder accessible by root. /usr/local/sbin is a good idea
+# borrows from the example init script by cliechti@gmx.net
 
 PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
 DAEMON=/usr/local/bin/swabberd.py
@@ -21,7 +18,7 @@ NAME=swabberd
 DESC="Swabber daemon"
 
 test -f $DAEMON || exit 0
-
+. /lib/lsb/init-functions
 set -e
 
 case "$1" in
@@ -33,10 +30,16 @@ case "$1" in
 		    ;;
   stop)
   echo -n "Stopping $DESC: "
-  PID=$(ps axu | grep swabberd.py | grep -v grep | awk '{print $2}')
-  kill -9 $PID
-  echo "$NAME."
+  if start-stop-daemon --stop --quiet --oknodo -s HUP --pidfile /var/run/$NAME.pid; then
+      log_end_msg 0
+  else
+      log_end_msg 1
+  fi
   ;;
+  status)
+      status_of_proc -p /var/run/$NAME.pid /usr/bin/$NAME $NAME && exit 0 || exit $?
+ ;;
+
   #reload)
   #
   #	If the daemon can reload its config files on the fly
@@ -67,7 +70,7 @@ case "$1" in
   *)
   N=/etc/init.d/$NAME
   # echo "Usage: $N {start|stop|restart|reload|force-reload}" >&2
-  echo "Usage: $N {start|stop|restart|force-reload}" >&2
+  echo "Usage: $N {start|stop|restart|force-reload|status}" >&2
   exit 1
   ;;
 esac

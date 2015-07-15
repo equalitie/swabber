@@ -2,7 +2,6 @@
 
 __author__ = "nosmo@nosmo.me"
 
-import daemon
 import iptc
 import hostsfile
 
@@ -12,19 +11,17 @@ import time
 import logging
 import threading
 import traceback
-import datetime
-import sys
 
-"""Clean rules that have expired"""
+# Clean rules that have expired
 
-#minutes
+# in minutes
 BANTIME = 2
 
 BANLIMIT = 10
 
 class BanCleaner(threading.Thread):
 
-    def _iptc_cleanBans(self, interface=None):
+    def _iptc_clean_bans(self, interface=None):
 
         banlist = []
 
@@ -37,7 +34,7 @@ class BanCleaner(threading.Thread):
                 # dumb but fix later.
 
                 now = int(time.time())
-                ban = self.BanObject(rule.src.split("/")[0])
+                ban = self.ban_object(rule.src.split("/")[0])
                 if not ban.banstart:
                     continue
 
@@ -55,11 +52,11 @@ class BanCleaner(threading.Thread):
 
         return True
 
-    def _hosts_cleanBans(self, interface=None):
+    def _hosts_clean_bans(self, interface=None):
 
         hostsban = hostsfile.HostsDeny()
         for banentry in hostsban:
-            ban = self.BanObject(banentry[1])
+            ban = self.ban_object(banentry[1])
             if not ban.banstart:
                 continue
 
@@ -68,7 +65,7 @@ class BanCleaner(threading.Thread):
                 logging.info("Unbanning %s as the ban has expired", ban.ipaddress)
                 ban.unban()
 
-    def _iptables_cmd_cleanBans(self, interface=None):
+    def _iptables_cmd_clean_bans(self, interface=None):
         for rule in banobjects.IPTablesCommandBanEntry.list(self.timelimit):
             ruletodelete = banobjects.IPTablesCommandBanEntry(rule)
             ruletodelete.unban(interface)
@@ -77,20 +74,20 @@ class BanCleaner(threading.Thread):
     def __init__(self, bantime, backend, lock, interface):
         self.bantime = bantime
         self.interface = interface
-        self.BanObject = banobjects.entries[backend]
+        self.ban_object = banobjects.entries[backend]
         self.timelimit = bantime
         threading.Thread.__init__(self)
         self.running = False
 
         self.iptables_lock = lock
 
-        self.cleanBans = {
-            "hostsfile": self._hosts_cleanBans,
-            "iptables": self._iptc_cleanBans,
-            "iptables_cmd": self._iptables_cmd_cleanBans
+        self.clean_bans = {
+            "hostsfile": self._hosts_clean_bans,
+            "iptables": self._iptc_clean_bans,
+            "iptables_cmd": self._iptables_cmd_clean_bans
             }[backend]
 
-    def stopIt(self):
+    def stop_running(self):
         self.running = False
 
     def run(self):
@@ -98,7 +95,7 @@ class BanCleaner(threading.Thread):
         logging.info("Started running bancleaner")
         while self.running:
             try:
-                self.cleanBans(self.interface)
+                self.clean_bans(self.interface)
                 time.sleep(60)
             except Exception as e:
                 logging.error("Uncaught exception in cleaner! %s", str(e))
@@ -118,7 +115,7 @@ def main():
     #ch.setFormatter(formatter)
     #mainlogger.addHandler(ch)
 
-    b = BanCleaner(BANTIME, "iptables", threading.Lock())
+    b = BanCleaner(BANTIME, "iptables", threading.Lock(), "eth+")
     b.run()
 
 if __name__ == "__main__":
