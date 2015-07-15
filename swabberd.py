@@ -35,6 +35,48 @@ DEFAULT_CONFIG = {
     "logpath": "/var/log/swabber.log"
 }
 
+def daemon_setup():
+    # First fork
+    try:
+        pid = os.fork()
+        if pid > 0:
+            # exit first parent
+            sys.exit(0)
+    except OSError, e:
+        sys.stderr.write("fork #1 failed: %d (%s)\n" % (e.errno, e.strerror))
+        sys.exit(1)
+
+    # Don't hang onto any files accidentally
+    os.chdir("/")
+    # Decouple from our environment
+    os.setsid()
+    os.umask(0)
+
+    # Second fork
+    try:
+        pid = os.fork()
+        if pid > 0:
+            # exit if second parent
+            sys.exit(0)
+    except OSError, e:
+        sys.stderr.write("Second fork failed: %d (%s)\n" % (e.errno, e.strerror))
+        sys.exit(1)
+
+    # redirect standard file descriptors
+    sys.stdout.flush()
+    sys.stderr.flush()
+    si = file("/dev/null", 'r')
+    so = file("/dev/null", 'a+')
+    #se = file("/dev/null", 'a+', 0)
+    os.dup2(si.fileno(), sys.stdin.fileno())
+    os.dup2(so.fileno(), sys.stdout.fileno())
+    #os.dup2(se.fileno(), sys.stderr.fileno())
+
+    # write pidfile
+    #atexit.register(self.delpid)
+    #pid = str(os.getpid())
+    #file(self.pidfile,'w+').write("%s\n" % pid)
+
 def get_config(configpath):
     config = DEFAULT_CONFIG
 
@@ -114,7 +156,7 @@ def main():
         logger.setLevel(logging.INFO)
         logfile_handler = logging.handlers.WatchedFileHandler(config["logpath"])
         logfile_handler.setFormatter(logging.Formatter(
-            'swabber (%(process)d): %(levelname)s %(message)s'))
+            'swabber (%(process)d) %(asctime)s: %(levelname)s %(message)s'))
         logger.addHandler(logfile_handler)
 
     if os.getuid() != 0 and not options.forcerun:
@@ -126,10 +168,8 @@ def main():
         sys.exit(1)
 
     if not options.verbose:
-        if os.fork() != 0:
-            raise SystemExit("Couldn't fork!")
-        if os.fork() != 0:
-            raise SystemExit("Couldn't fork!")
+
+        daemon_setup()
 
         with open("/var/run/swabberd.pid", "w") as mypid:
             mypid.write(str(os.getpid()))
