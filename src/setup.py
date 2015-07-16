@@ -15,7 +15,7 @@ setup(
         "python-iptables",
         "pyzmq",
         "pyyaml"
-    ]
+    ],
     classifiers=[
         "Development Status :: 5 - Production/Stable",
         "Topic :: Security",

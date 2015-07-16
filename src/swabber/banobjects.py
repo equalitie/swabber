@@ -107,7 +107,7 @@ class IPTablesCommandBanEntry(object):
 
         status, output = commands.getstatusoutput(iptables_command)
         if status:
-            raise Exception("failed to unban IP %s: %s command %s" % (self.ipaddress, output, command))
+            raise Exception("failed to unban IP %s: %s command %s" % (self.ipaddress, output, iptables_command))
         return True
 
     def __repr__(self):
