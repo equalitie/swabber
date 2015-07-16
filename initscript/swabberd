@@ -13,7 +13,7 @@
 # borrows from the example init script by cliechti@gmx.net
 
 PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
-DAEMON=/usr/local/bin/swabberd.py
+DAEMON=/usr/local/bin/swabberd
 NAME=swabberd
 DESC="Swabber daemon"
 
