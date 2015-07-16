@@ -14,9 +14,8 @@ setup(
 
     classifiers=[
         "Development Status :: 5 - Production/Stable",
-        "Topic :: Daemons",
+        "Topic :: Security",
         "Intended Audience :: System Administrators",
-        "License :: N(C) License",
         ],
     scripts = ["swabberd"],
     data_files=[
