@@ -19,6 +19,7 @@ from swabber import BanFetcher
 import yaml
 
 import logging
+import logging.handlers
 import optparse
 import os
 import signal
