@@ -42,8 +42,6 @@ class IPTablesCommandBanEntry(object):
 
         self.new_ban = True
 
-        self._iptables_has_wait = iptables_has_wait()
-
         for rule, start in self.list().iteritems():
             if rule == self.ipaddress:
                 self.banstart = int(start)
@@ -59,7 +57,7 @@ class IPTablesCommandBanEntry(object):
         # happen. Has no effect if iptables doesn't support it.
 
         iptables_command = "/sbin/iptables -L -n"
-        if wait and self._iptables_has_wait:
+        if wait and iptables_has_wait():
             iptables_command += " -w"
 
         rulesdict = {}
@@ -89,7 +87,7 @@ class IPTablesCommandBanEntry(object):
                    " --comment \"swabber:%d\"") % (
                        self.ipaddress, interface_section, now)
 
-        if wait and self._iptables_has_wait:
+        if wait and iptables_has_wait():
             iptables_command += " -w"
 
         status, output = commands.getstatusoutput(iptables_command)
@@ -104,7 +102,7 @@ class IPTablesCommandBanEntry(object):
         interface_section = "-i %s" % interface if interface else ""
 
         iptables_command = "iptables -D INPUT -s %s -j DROP -m comment --comment \"swabber:%d\" %s" % (self.ipaddress, self.banstart, interface_section)
-        if wait and self._iptables_has_wait:
+        if wait and iptables_has_wait():
             iptables_command += " -w"
 
         status, output = commands.getstatusoutput(iptables_command)
