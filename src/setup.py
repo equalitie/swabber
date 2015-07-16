@@ -3,7 +3,7 @@ from setuptools import setup
 
 setup(
     name = "swabber",
-    version = "1.0.5",
+    version = "1.0.6",
     author = "Hugh Nowlan",
     author_email = "nosmo@nosmo.me",
     description = "Pubsub-based host banning interface",
@@ -11,7 +11,11 @@ setup(
     keywords = "iptables banning pubsub",
     url = "http://github.com/equalitie/swabber",
     packages=['swabber'],
-
+    install_requires=[
+        "python-iptables",
+        "pyzmq",
+        "pyyaml"
+    ]
     classifiers=[
         "Development Status :: 5 - Production/Stable",
         "Topic :: Security",
