@@ -8,6 +8,28 @@ import commands
 import logging
 import hostsfile
 
+def get_iptables_version():
+    status, output = commands.getstatusoutput('/sbin/iptables --version')
+    if status != 0:
+        return None
+    version = output.strip().split(" ")[1]
+    if version.startswith("v"):
+        version = version[1:]
+    return [ int(i) for i in version.split(".") ]
+
+IPTABLES_VERSION = get_iptables_version()
+
+def iptables_has_wait():
+    introduced_in = [1, 4, 20]
+    if IPTABLES_VERSION[0] > introduced_in[0]:
+        return True
+    elif IPTABLES_VERSION[1] > introduced_in[1]:
+        return True
+    elif IPTABLES_VERSION[2] >= introduced_in[2]:
+        return True
+    else:
+        return False
+
 class IPTablesCommandBanEntry(object):
 
     fault_exception = Exception
@@ -17,6 +39,8 @@ class IPTablesCommandBanEntry(object):
         self.banstart = None
 
         self.new_ban = True
+
+        self._iptables_has_wait = iptables_has_wait()
 
         for rule, start in self.list().iteritems():
             if rule == self.ipaddress:
@@ -30,10 +54,10 @@ class IPTablesCommandBanEntry(object):
 
         # wait - use the iptables wait to get a lock for listing. Will
         # slow down some operations, but means they will definitely
-        # happen.
+        # happen. Has no effect if iptables doesn't support it.
 
         iptables_command = "/sbin/iptables -L -n"
-        if wait: 
+        if wait and self._iptables_has_wait:
             iptables_command += " -w"
 
         rulesdict = {}
@@ -63,12 +87,12 @@ class IPTablesCommandBanEntry(object):
                    " --comment \"swabber:%d\"") % (
                        self.ipaddress, interface_section, now)
 
-        if wait: 
+        if wait and self._iptables_has_wait:
             iptables_command += " -w"
 
         status, output = commands.getstatusoutput(iptables_command)
         self.banstart = now
-        
+
         if status:
             raise Exception("Couldn't set iptables rule for %s (command %s): %s" % (
                 self.ipaddress, command, output))
@@ -78,7 +102,7 @@ class IPTablesCommandBanEntry(object):
         interface_section = "-i %s" % interface if interface else ""
 
         iptables_command = "iptables -D INPUT -s %s -j DROP -m comment --comment \"swabber:%d\" %s" % (self.ipaddress, self.banstart, interface_section)
-        if wait: 
+        if wait and self._iptables_has_wait:
             iptables_command += " -w"
 
         status, output = commands.getstatusoutput(iptables_command)
