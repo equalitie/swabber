@@ -3,7 +3,7 @@ from setuptools import setup
 
 setup(
     name = "swabber",
-    version = "1.0.0",
+    version = "1.0.3",
     author = "Hugh Nowlan",
     author_email = "nosmo@nosmo.me",
     description = "Pubsub-based host banning interface",
@@ -18,8 +18,9 @@ setup(
         "Intended Audience :: System Administrators",
         ],
     scripts = ["swabberd"],
-    data_files=[
-        ('/etc', ["../conf/swabber.yaml"]),
-        ('/etc/init.d/', ["../initscript/swabberd"])
-        ],
+    # Not distributing configuration and init script with the package
+    # because data_files is fucking USELESS. Can't rename files, can't
+    # address files with a relative path, must have the init script with the
+    # same name as the actual script getting installed into bin/. Fuck
+    # that, fuck off, fuck computers.
     )
