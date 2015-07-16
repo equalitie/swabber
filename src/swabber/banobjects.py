@@ -21,6 +21,8 @@ IPTABLES_VERSION = get_iptables_version()
 
 def iptables_has_wait():
     introduced_in = [1, 4, 20]
+    if not IPTABLES_VERSION:
+        return False
     if IPTABLES_VERSION[0] > introduced_in[0]:
         return True
     elif IPTABLES_VERSION[1] > introduced_in[1]:
