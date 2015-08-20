@@ -6,3 +6,7 @@ bindstrings:
 interface: eth+
 backend: iptables_cmd
 logfile: /var/log/swabber.log
+
+whitelist:
+  - 127.0.0.0/8
+  - 10.0.0.1

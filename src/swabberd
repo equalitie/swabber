@@ -33,6 +33,7 @@ DEFAULT_CONFIG = {
     "bindstrings": ["tcp://127.0.0.1:22620"],
     "interface": "eth+",
     "backend": "iptables",
+    "whitelist": [],
     "logpath": "/var/log/swabber.log"
 }
 
@@ -79,6 +80,13 @@ def daemon_setup():
     #file(self.pidfile,'w+').write("%s\n" % pid)
 
 def get_config(configpath):
+    '''Load the configuration file and update the defaults dictionary
+    with any information included in it.
+
+    Returns the configuration as a dictionary.
+
+    '''
+
     config = DEFAULT_CONFIG
 
     with open(configpath) as config_h:
@@ -92,6 +100,13 @@ def get_config(configpath):
 
 def run_threads(config):
 
+    '''Start the individual threads for cleaner and fetcher. Catches
+    SIGTERM.
+
+    Returns nothing at the moment.
+
+    '''
+
     #TODO make iptables_lock optional
     iptables_lock = threading.Lock()
 
@@ -101,7 +116,7 @@ def run_threads(config):
                              iptables_lock, config["interface"])
     banner = BanFetcher(config["bindstrings"],
                         config["interface"], config["backend"],
-                        iptables_lock)
+                        config["whitelist"], iptables_lock)
 
     def handle_signal(signum, frame):
         if signum == 15 or signum == 16:
