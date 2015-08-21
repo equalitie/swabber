@@ -4,7 +4,7 @@ import commands
 import threading
 import os
 import tempfile
-from swabber import BanEntry 
+from swabber import BanEntry
 from swabber import BanCleaner
 from swabber import BanFetcher
 
@@ -14,13 +14,14 @@ from zmq.eventloop import ioloop, zmqstream
 BAN_IP = "10.123.45.67"
 BINDSTRING = "tcp://127.0.0.1:22620"
 INTERFACE = "eth+"
+BAN_METHOD = "iptables_cmd"
 
 #Defining context outside to avoid attacker using up all FDs
 context   = zmq.Context(1)
 
-class Attacker(object): #(threading.Thread): 
+class Attacker(object): #(threading.Thread):
 
-    def __init__(self, testip): 
+    def __init__(self, testip):
         self.testip = testip
         #threading.Thread.__init__(self)
 
@@ -34,20 +35,20 @@ class Attacker(object): #(threading.Thread):
         #context.destroy(linger=0)
         return True
 
-class StressTest(object): 
+class StressTest(object):
 
-    def __init__(self, testip, hit_times=500000): 
+    def __init__(self, testip, hit_times=500000):
         self.testip = testip
         self.hit_times = hit_times
 
-    def run(self): 
+    def run(self):
 
         bfetcher = BanFetcher(DB_CONN, BINDSTRING, False)
         bfetcher.start()
 
         print "Starting attacks"
 
-        for i in range(self.hit_times): 
+        for i in range(self.hit_times):
             if i % 1000 == 0:
                 print "Attacked %d times" % i
 
@@ -55,8 +56,8 @@ class StressTest(object):
             a.start()
             del(a)
 
-class Attacker(threading.Thread): 
-    def __init__(self, testip): 
+class Attacker(threading.Thread):
+    def __init__(self, testip):
         self.testip = testip
         threading.Thread.__init__(self)
 
@@ -68,14 +69,14 @@ class Attacker(threading.Thread):
         publisher.send_multipart(("swabber_bans", testip))
         return True
 
-class StressTest(object): 
+class StressTest(object):
 
-    def __init__(self, testip, hit_times=1000000): 
+    def __init__(self, testip, hit_times=1000000):
         self.testip = testip
         self.hit_times = hit_times
 
-    def run(self): 
-        for i in range(self.hit_times): 
+    def run(self):
+        for i in range(self.hit_times):
             if i % 100 == 0:
                 print "Attacked %d times" % i
 
@@ -93,9 +94,15 @@ class BanTests(unittest.TestCase):
         status, output = commands.getstatusoutput("/sbin/iptables -L -n")
         self.assertNotIn(BAN_IP, output, msg="IP address was not unbanned")
 
-class CleanTests(unittest.TestCase): 
-    
-    def testClean(self): 
+    def test_whitelist(self):
+        ban_fetcher = BanFester(BINDSTRING, INTERFACE,
+                                BAN_METHOD, ["10.0.2.1"],
+                                threading.Lock)
+        self.assertFalse(ban_fetcher.subscription(("swabber_bans", "10.0.2.1"))
+
+class CleanTests(unittest.TestCase):
+
+    def testClean(self):
 
         ban_len = 1
         bantime = datetime.timedelta(minutes=(ban_len*2))
@@ -106,12 +113,12 @@ class CleanTests(unittest.TestCase):
         ban.ban(INTERFACE)
         cleaner = BanCleaner(db_conn, ban_len)
         cleaner.cleanBans()
-        
+
         status, output = commands.getstatusoutput("/sbin/iptables -L -n")
         self.assertNotIn(BAN_IP, output, msg="Ban was not reset by cleaner")
 
 def main():
-    if os.getuid() != 0: 
+    if os.getuid() != 0:
         print "Tests must be run as root"
         raise SystemExit
     else:
@@ -121,4 +128,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
