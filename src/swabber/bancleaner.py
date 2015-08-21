@@ -77,7 +77,10 @@ class BanCleaner(threading.Thread):
         self.interface = interface
         self.ban_object = banobjects.entries[backend]
         self.timelimit = bantime
+
         threading.Thread.__init__(self)
+        self.daemon = True
+
         self.running = False
 
         self.iptables_lock = lock

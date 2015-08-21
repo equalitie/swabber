@@ -24,6 +24,7 @@ import optparse
 import os
 import signal
 import sys
+import time
 import threading
 
 BACKENDS = ["iptables", "hostsfile", "iptables_cmd"]
@@ -133,11 +134,14 @@ def run_threads(config):
         banner.start()
         logging.warning("Started running banner")
     except Exception as e:
-        print "Exception %s" % e
-        logging.error("Swabber exiting on exception %s!", str(e))
+        print "Unhandled exception %s" % e
+        logging.error("Swabber exiting on unhandled exception %s!", str(e))
         if config["bantime"]:
             cleaner.stop_running()
         banner.stopIt()
+
+    while True: 
+        time.sleep(0.1)
 
 def main():
 
