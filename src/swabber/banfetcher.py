@@ -62,6 +62,7 @@ class BanFetcher(threading.Thread):
         self.iptables_lock = lock
 
         threading.Thread.__init__(self)
+        self.daemon = True
 
     def subscription(self, message):
         if len(message) != 2:
@@ -84,7 +85,7 @@ class BanFetcher(threading.Thread):
                 return False
         for whitelist_ip in self.whitelist["addresses"]:
             if ipaddr_obj == whitelist_ip:
-                logging.info("Not banning IP %s because it is whitelisted" ipaddress)
+                logging.info("Not banning IP %s because it is whitelisted", ipaddress)
                 return False
 
         if action == "swabber_bans":
