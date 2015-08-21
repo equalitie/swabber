@@ -3,7 +3,9 @@ import datetime
 import commands
 import threading
 import os
+import time
 import tempfile
+
 from swabber import BanEntry
 from swabber import BanCleaner
 from swabber import BanFetcher
@@ -12,7 +14,7 @@ import zmq
 from zmq.eventloop import ioloop, zmqstream
 
 BAN_IP = "10.123.45.67"
-BINDSTRING = "tcp://127.0.0.1:22620"
+BINDSTRING = ["tcp://127.0.0.1:22620"]
 INTERFACE = "eth+"
 BAN_METHOD = "iptables_cmd"
 
@@ -85,8 +87,8 @@ class StressTest(object):
 
 class BanTests(unittest.TestCase):
 
-    def testBan(self):
-        ban = BanEntry(BAN_IP, datetime.datetime.now())
+    def test_ban(self):
+        ban = BanEntry(BAN_IP)
         ban.ban(INTERFACE)
         status, output = commands.getstatusoutput("/sbin/iptables -L -n")
         ban.unban()
@@ -95,10 +97,14 @@ class BanTests(unittest.TestCase):
         self.assertNotIn(BAN_IP, output, msg="IP address was not unbanned")
 
     def test_whitelist(self):
-        ban_fetcher = BanFester(BINDSTRING, INTERFACE,
-                                BAN_METHOD, ["10.0.2.1"],
-                                threading.Lock)
-        self.assertFalse(ban_fetcher.subscription(("swabber_bans", "10.0.2.1"))
+        print BINDSTRING
+        print INTERFACE
+        print BAN_METHOD
+        lock = threading.Lock()
+        ban_fetcher = BanFetcher(BINDSTRING, INTERFACE,
+                                 BAN_METHOD, ["10.0.2.1"],
+                                 lock)
+        self.assertFalse(ban_fetcher.subscription(("swabber_bans", "10.0.2.1")))
 
 class CleanTests(unittest.TestCase):
 
@@ -106,13 +112,12 @@ class CleanTests(unittest.TestCase):
 
         ban_len = 1
         bantime = datetime.timedelta(minutes=(ban_len*2))
-        ban = BanEntry(BAN_IP, datetime.datetime.now() - bantime)
-        session.add(ban)
-        session.commit()
+        ban = BanEntry(BAN_IP)
+        time.sleep(ban_len*2)
 
         ban.ban(INTERFACE)
-        cleaner = BanCleaner(db_conn, ban_len)
-        cleaner.cleanBans()
+        cleaner = BanCleaner(ban_len, BAN_METHOD, threading.Lock, INTERFACE)
+        cleaner.clean_bans()
 
         status, output = commands.getstatusoutput("/sbin/iptables -L -n")
         self.assertNotIn(BAN_IP, output, msg="Ban was not reset by cleaner")
@@ -122,8 +127,8 @@ def main():
         print "Tests must be run as root"
         raise SystemExit
     else:
-        s = StressTest(BAN_IP)
-        s.run()
+        #s = StressTest(BAN_IP)
+        #s.run()
         unittest.main()
 
 if __name__ == '__main__':
