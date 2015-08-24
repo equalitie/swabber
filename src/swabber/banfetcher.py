@@ -2,8 +2,8 @@
 
 __author__ = "nosmo@nosmo.me"
 
-import json
 import zmq
+import ipaddr
 from zmq.eventloop import ioloop, zmqstream
 
 import datetime
@@ -111,10 +111,11 @@ class BanFetcher(threading.Thread):
 
                 except self.ban_object.fault_exception as e:
                     logging.error("Failed to initialise ban - do we lack permissions?: %s", e)
-                    #raise SystemExit
 
         else:
             logging.error("Got an invalid message header: %s", message)
+            return False
+        return True
 
     def stop_running(self):
         self.loop.stop()
