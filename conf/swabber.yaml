@@ -1,5 +1,7 @@
+
 ---
 bantime: 18000
+polltime: 60
 bindstrings:
   - tcp://127.0.0.1:22620
   - tcp://127.0.0.1:22621
