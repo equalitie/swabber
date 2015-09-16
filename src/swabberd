@@ -24,15 +24,19 @@ import optparse
 import os
 import signal
 import sys
+import time
 import threading
+import traceback
 
 BACKENDS = ["iptables", "hostsfile", "iptables_cmd"]
 
 DEFAULT_CONFIG = {
     "bantime": 120,
     "bindstrings": ["tcp://127.0.0.1:22620"],
+    "polltime": 60,
     "interface": "eth+",
     "backend": "iptables",
+    "whitelist": [],
     "logpath": "/var/log/swabber.log"
 }
 
@@ -79,6 +83,13 @@ def daemon_setup():
     #file(self.pidfile,'w+').write("%s\n" % pid)
 
 def get_config(configpath):
+    '''Load the configuration file and update the defaults dictionary
+    with any information included in it.
+
+    Returns the configuration as a dictionary.
+
+    '''
+
     config = DEFAULT_CONFIG
 
     with open(configpath) as config_h:
@@ -92,8 +103,18 @@ def get_config(configpath):
 
 def run_threads(config):
 
+    '''Start the individual threads for cleaner and fetcher. Catches
+    SIGTERM.
+
+    Returns nothing at the moment.
+
+    '''
+
     #TODO make iptables_lock optional
     iptables_lock = threading.Lock()
+
+    # To control execution of cleaner
+    running = True
 
     cleaner = None
     if config["bantime"] != 0:
@@ -101,28 +122,36 @@ def run_threads(config):
                              iptables_lock, config["interface"])
     banner = BanFetcher(config["bindstrings"],
                         config["interface"], config["backend"],
-                        iptables_lock)
+                        config["whitelist"], iptables_lock)
 
     def handle_signal(signum, frame):
         if signum == 15 or signum == 16:
             banner.stop_running()
             if config["bantime"]:
-                cleaner.stopIt()
+                running = False
             logging.warning("Closing on SIGTERM")
     signal.signal(signal.SIGTERM, handle_signal)
 
     try:
-        if config["bantime"] != 0:
-            cleaner.start()
-            logging.warning("Started running cleaner")
         banner.start()
         logging.warning("Started running banner")
     except Exception as e:
-        print "Exception %s" % e
-        logging.error("Swabber exiting on exception %s!", str(e))
-        if config["bantime"]:
-            cleaner.stop_running()
-        banner.stopIt()
+        print "Unhandled exception %s" % e
+        logging.error("Swabber exiting on unhandled exception %s!", str(e))
+        banner.stop_running()
+
+    while running:
+        if config["bantime"] == 0:
+            # We only have one thread so we'll have to just do this dumb sleep here.
+            time.sleep(0.1)
+        else:
+            logging.info("Started running bancleaner")
+            try:
+                cleaner.clean_bans(config["interface"])
+                time.sleep(config["polltime"])
+            except Exception as exc:
+                logging.error("Uncaught exception in cleaner! %s", str(exc))
+                traceback.print_exc()
 
 def main():
 

@@ -19,7 +19,7 @@ BANTIME = 2
 
 BANLIMIT = 10
 
-class BanCleaner(threading.Thread):
+class BanCleaner(object):
 
     def _iptc_clean_bans(self, interface=None):
 
@@ -77,8 +77,6 @@ class BanCleaner(threading.Thread):
         self.interface = interface
         self.ban_object = banobjects.entries[backend]
         self.timelimit = bantime
-        threading.Thread.__init__(self)
-        self.running = False
 
         self.iptables_lock = lock
 
@@ -88,27 +86,9 @@ class BanCleaner(threading.Thread):
             "iptables_cmd": self._iptables_cmd_clean_bans
             }[backend]
 
-    def stop_running(self):
-        self.running = False
-
-    def run(self):
-        self.running = True
-        logging.info("Started running bancleaner")
-        while self.running:
-            try:
-                self.clean_bans(self.interface)
-                time.sleep(60)
-            except Exception as e:
-                logging.error("Uncaught exception in cleaner! %s", str(e))
-                traceback.print_exc()
-                #self.running = False
-
-        return False
-
 def main():
 
-    mainlogger = logging.getLogger()
-
+    #mainlogger = logging.getLogger()
     #logging.basicConfig(level=logging.DEBUG)
     #ch = logging.StreamHandler(sys.stdout)
     #ch.setLevel(logging.DEBUG)
@@ -117,7 +97,9 @@ def main():
     #mainlogger.addHandler(ch)
 
     b = BanCleaner(BANTIME, "iptables", threading.Lock(), "eth+")
-    b.run()
+    while True:
+        b.clean_bans()
+        time.sleep(60)
 
 if __name__ == "__main__":
     main()

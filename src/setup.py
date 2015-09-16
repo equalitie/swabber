@@ -14,6 +14,7 @@ setup(
     install_requires=[
         "python-iptables",
         "pyzmq",
+        "ipaddr",
         "pyyaml"
     ],
     classifiers=[
