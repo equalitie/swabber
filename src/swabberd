@@ -145,7 +145,7 @@ def run_threads(config):
             # We only have one thread so we'll have to just do this dumb sleep here.
             time.sleep(0.1)
         else:
-            logging.info("Started running bancleaner")
+            logging.debug("Started running bancleaner")
             try:
                 cleaner.clean_bans(config["interface"])
                 time.sleep(config["polltime"])
