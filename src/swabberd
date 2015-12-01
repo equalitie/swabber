@@ -170,7 +170,6 @@ class Swabberd(object):
                 # We only have one thread so we'll have to just do this dumb sleep here.
                 time.sleep(0.1)
             else:
-                logging.info("Started running bancleaner")
                 try:
                     self.cleaner.clean_bans(self.config["interface"])
                     time.sleep(self.config["polltime"])
