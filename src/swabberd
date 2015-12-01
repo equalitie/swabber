@@ -101,57 +101,82 @@ def get_config(configpath):
                          ", ".join(BACKENDS))
     return config
 
-def run_threads(config):
+class Swabberd(object):
 
-    '''Start the individual threads for cleaner and fetcher. Catches
-    SIGTERM.
+    def __init__(self, config, configpath): 
+        self.config = config
+        self.configpath = configpath
+        self.banner = None
+        self.cleaner = None
 
-    Returns nothing at the moment.
+        self.run_threads()
+        
+    def run_threads(self):
 
-    '''
+        '''Start the individual threads for cleaner and fetcher. Catches
+        SIGTERM.
 
-    #TODO make iptables_lock optional
-    iptables_lock = threading.Lock()
+        Args:
+         config: a dictionary of the loaded YAML config
+         configpath: a string containing the path to the config
 
-    # To control execution of cleaner
-    running = True
+        Returns nothing at the moment.
 
-    cleaner = None
-    if config["bantime"] != 0:
-        cleaner = BanCleaner(config["bantime"], config["backend"],
-                             iptables_lock, config["interface"])
-    banner = BanFetcher(config["bindstrings"],
-                        config["interface"], config["backend"],
-                        config["whitelist"], iptables_lock)
+        '''
 
-    def handle_signal(signum, frame):
-        if signum == 15 or signum == 16:
-            banner.stop_running()
-            if config["bantime"]:
-                running = False
-            logging.warning("Closing on SIGTERM")
-    signal.signal(signal.SIGTERM, handle_signal)
+        #TODO make iptables_lock optional
+        iptables_lock = threading.Lock()
 
-    try:
-        banner.start()
-        logging.warning("Started running banner")
-    except Exception as e:
-        print "Unhandled exception %s" % e
-        logging.error("Swabber exiting on unhandled exception %s!", str(e))
-        banner.stop_running()
+        # To control execution of cleaner
+        self.running = True
 
-    while running:
-        if config["bantime"] == 0:
-            # We only have one thread so we'll have to just do this dumb sleep here.
-            time.sleep(0.1)
-        else:
-            logging.info("Started running bancleaner")
-            try:
-                cleaner.clean_bans(config["interface"])
-                time.sleep(config["polltime"])
-            except Exception as exc:
-                logging.error("Uncaught exception in cleaner! %s", str(exc))
-                traceback.print_exc()
+        if self.config["bantime"] != 0:
+            self.cleaner = BanCleaner(self.config["bantime"], self.config["backend"],
+                                      iptables_lock, self.config["interface"])
+        self.banner = BanFetcher(self.config["bindstrings"],
+                                 self.config["interface"], self.config["backend"],
+                                 self.config["whitelist"], iptables_lock)
+
+        def handle_signal(signum, frame):
+            if signum == signal.SIGTERM:
+                self.banner.stop_running()
+                if self.config["bantime"]:
+                    self.running = False
+                logging.warning("Closing on SIGTERM")
+            elif signum == signal.SIGHUP: 
+                config = get_config(self.configpath)
+                self.banner.stop_running()
+                self.banner = BanFetcher(self.config["bindstrings"],
+                                         self.config["interface"], self.config["backend"],
+                                         self.config["whitelist"], iptables_lock)
+                if self.cleaner:
+                    self.cleaner = BanCleaner(self.config["bantime"], self.config["backend"],
+                                              iptables_lock, self.config["interface"])
+                logging.info("Reloaded config")
+
+        signal.signal(signal.SIGTERM, handle_signal)
+        signal.signal(signal.SIGHUP, handle_signal)
+
+        try:
+            self.banner.start()
+            logging.warning("Started running banner")
+        except Exception as e:
+            print "Unhandled exception %s" % e
+            logging.error("Swabber exiting on unhandled exception %s!", str(e))
+            self.banner.stop_running()
+
+        while self.running:
+            if self.config["bantime"] == 0:
+                # We only have one thread so we'll have to just do this dumb sleep here.
+                time.sleep(0.1)
+            else:
+                logging.info("Started running bancleaner")
+                try:
+                    self.cleaner.clean_bans(self.config["interface"])
+                    time.sleep(self.config["polltime"])
+                except Exception as exc:
+                    logging.error("Uncaught exception in cleaner! %s", str(exc))
+                    traceback.print_exc()
 
 def main():
 
@@ -206,7 +231,8 @@ def main():
 
         logging.info("Starting swabber in daemon mode")
 
-    run_threads(config)
+    s = Swabberd(config, options.configpath)
+
 
 if __name__ == "__main__":
     main()

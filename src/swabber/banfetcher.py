@@ -121,7 +121,8 @@ class BanFetcher(threading.Thread):
         self.loop.stop()
 
     def run(self):
-        self.loop = ioloop.IOLoop.instance().start()
+        self.loop = ioloop.IOLoop.instance()
+        self.loop.start()
 
 def main():
     verbose = False
