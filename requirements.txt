@@ -1,3 +1,4 @@
 python-iptables
 pyzmq
+ipaddr
 yaml

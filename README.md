@@ -48,6 +48,9 @@ The number of seconds to hold a ban before unbanning a host. As of the time of w
 
 [Currently](https://github.com/ldx/python-iptables/issues/38) python-iptables can encounter some CPU issues when iterating over huge lists of bans. /etc/hosts.deny can incur some overhead when a huge number of entries is present (64000 bans can incur .1s of connection delay, although a figure this large is not recommended).
 
+polltime: <integer>
+-------------
+How often to check for existing bans to unban. The default of 60 is a relatively sane one, but if you need very short-term bans then changing this might be of use.
 
 bindstrings: [<ZMQ connection URI>...]
 -------------
@@ -62,4 +65,3 @@ This is the interface to issue ban rules for. Can be of the iptables match forma
 backend: hostsfile OR iptables OR iptables_cmd
 -------------
 Ban hosts using /etc/hosts.deny, the python-iptables module or directly via iptables commands. See above for the explanation of the impact of this option.
-

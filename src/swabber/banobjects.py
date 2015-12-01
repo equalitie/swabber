@@ -218,7 +218,7 @@ entries = {
     "hostsfile": HostsBanEntry
     }
 
-BanEntry = HostsBanEntry
+BanEntry = IPTablesCommandBanEntry
 
 def main():
     pass
