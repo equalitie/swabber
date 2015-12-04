@@ -1,4 +1,4 @@
 python-iptables
 pyzmq
 ipaddr
-yaml
+pyyaml
