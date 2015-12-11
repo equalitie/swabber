@@ -3,7 +3,7 @@ from setuptools import setup
 
 setup(
     name = "swabber",
-    version = "1.3.4",
+    version = "1.3.7",
     author = "Hugh Nowlan",
     author_email = "nosmo@nosmo.me",
     description = "Pubsub-based host banning interface",

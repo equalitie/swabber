@@ -69,9 +69,9 @@ class BanCleaner(object):
         for rule in banobjects.IPTablesCommandBanEntry.list(self.timelimit):
             ruletodelete = banobjects.IPTablesCommandBanEntry(rule)
             logging.info("Unbanning %s as the ban has expired", ruletodelete.ipaddress)
-            ruletodelete.unban(interface)
+            with self.iptables_lock:
+                ruletodelete.unban(interface)
 
-    #TODO make lock optional
     def __init__(self, bantime, backend, lock, interface):
         self.bantime = bantime
         self.interface = interface
