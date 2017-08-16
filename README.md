@@ -25,7 +25,21 @@ Installation
 ======
 Python <= 2.5 will need to also install the json module. python-dev is required to install the dependencies.
 
-<code>python setup.py install</code> will install the libraries and the actual swabber daemon to <code>/usr/bin/swabberd.py</code>. The <code>swabberd</code> file can be used as an init script if you're installing the package by hand.
+The Debian 9 dependencies can be installed via apt:
+
+    apt-get install iptables python-iptables python-zmq python-yaml python-ipaddr
+
+The python-iptables package has a bug which prevents it loading the <code>libxtwrapper.so</code> module. The following symbolic link fixes the load:
+
+    ln -s /usr/lib/python2.7/dist-packages/libxtwrapper.x86_64-linux-gnu.so /usr/lib/python2.7/dist-packages/libxtwrapper.so
+
+<code>setuptools</code> can be used to install the actual swabber daemon to <code>/usr/bin/swabberd.py</code>:
+
+    python setup.py install
+
+
+The <code>swabberd</code> file can be used as an init script if you're installing the package by hand.
+
 
 iptables interface
 -------------
