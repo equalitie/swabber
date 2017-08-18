@@ -33,12 +33,15 @@ The python-iptables package has a bug which prevents it loading the <code>libxtw
 
     ln -s /usr/lib/python2.7/dist-packages/libxtwrapper.x86_64-linux-gnu.so /usr/lib/python2.7/dist-packages/libxtwrapper.so
 
+NB: On Debian 9, you may need to create the <code>/usr/local/lib/python2.7/dist-packages</code> directory by hand.
+
 <code>setuptools</code> can be used to install the actual swabber daemon to <code>/usr/bin/swabberd.py</code>:
 
     python setup.py install
 
 
 The <code>swabberd</code> file can be used as an init script if you're installing the package by hand.
+
 
 
 iptables interface
