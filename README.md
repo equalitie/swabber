@@ -42,7 +42,10 @@ NB: On Debian 9, you may need to create the <code>/usr/local/lib/python2.7/dist-
 
 The <code>swabberd</code> file can be used as an init script if you're installing the package by hand.
 
+The <code>banpub-faker.py</code> example publisher also requires the Tornado Python library which can be installed with:
 
+    apt-get install python-tornado
+   
 
 iptables interface
 -------------
