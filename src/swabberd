@@ -22,7 +22,6 @@ import logging
 import logging.handlers
 import optparse
 import os
-import signal
 import sys
 import time
 import threading
@@ -40,48 +39,6 @@ DEFAULT_CONFIG = {
     "logpath": "/var/log/swabber.log"
 }
 
-def daemon_setup():
-    # First fork
-    try:
-        pid = os.fork()
-        if pid > 0:
-            # exit first parent
-            sys.exit(0)
-    except OSError, e:
-        sys.stderr.write("fork #1 failed: %d (%s)\n" % (e.errno, e.strerror))
-        sys.exit(1)
-
-    # Don't hang onto any files accidentally
-    os.chdir("/")
-    # Decouple from our environment
-    os.setsid()
-    os.umask(0)
-
-    # Second fork
-    try:
-        pid = os.fork()
-        if pid > 0:
-            # exit if second parent
-            sys.exit(0)
-    except OSError, e:
-        sys.stderr.write("Second fork failed: %d (%s)\n" % (e.errno, e.strerror))
-        sys.exit(1)
-
-    # redirect standard file descriptors
-    sys.stdout.flush()
-    sys.stderr.flush()
-    si = file("/dev/null", 'r')
-    so = file("/dev/null", 'a+')
-    #se = file("/dev/null", 'a+', 0)
-    os.dup2(si.fileno(), sys.stdin.fileno())
-    os.dup2(so.fileno(), sys.stdout.fileno())
-    #os.dup2(se.fileno(), sys.stderr.fileno())
-
-    # write pidfile
-    #atexit.register(self.delpid)
-    #pid = str(os.getpid())
-    #file(self.pidfile,'w+').write("%s\n" % pid)
-
 def get_config(configpath):
     '''Load the configuration file and update the defaults dictionary
     with any information included in it.
@@ -89,7 +46,6 @@ def get_config(configpath):
     Returns the configuration as a dictionary.
 
     '''
-
     config = DEFAULT_CONFIG
 
     with open(configpath) as config_h:
@@ -103,14 +59,14 @@ def get_config(configpath):
 
 class Swabberd(object):
 
-    def __init__(self, config, configpath): 
+    def __init__(self, config, configpath):
         self.config = config
         self.configpath = configpath
         self.banner = None
         self.cleaner = None
 
         self.run_threads()
-        
+
     def run_threads(self):
 
         '''Start the individual threads for cleaner and fetcher. Catches
@@ -136,26 +92,6 @@ class Swabberd(object):
         self.banner = BanFetcher(self.config["bindstrings"],
                                  self.config["interface"], self.config["backend"],
                                  self.config["whitelist"], iptables_lock)
-
-        def handle_signal(signum, frame):
-            if signum == signal.SIGTERM:
-                self.banner.stop_running()
-                if self.config["bantime"]:
-                    self.running = False
-                logging.warning("Closing on SIGTERM")
-            elif signum == signal.SIGHUP: 
-                config = get_config(self.configpath)
-                self.banner.stop_running()
-                self.banner = BanFetcher(self.config["bindstrings"],
-                                         self.config["interface"], self.config["backend"],
-                                         self.config["whitelist"], iptables_lock)
-                if self.cleaner:
-                    self.cleaner = BanCleaner(self.config["bantime"], self.config["backend"],
-                                              iptables_lock, self.config["interface"])
-                logging.info("Reloaded config")
-
-        signal.signal(signal.SIGTERM, handle_signal)
-        signal.signal(signal.SIGHUP, handle_signal)
 
         try:
             self.banner.start()
@@ -221,16 +157,7 @@ def main():
         sys.stderr.write("Couldn't load config file %s!\n" % options.configpath)
         sys.exit(1)
 
-    if not options.verbose:
-
-        daemon_setup()
-
-        with open("/var/run/swabberd.pid", "w") as mypid:
-            mypid.write(str(os.getpid()))
-
-        logging.info("Starting swabber in daemon mode")
-
-    s = Swabberd(config, options.configpath)
+    Swabberd(config, options.configpath)
 
 
 if __name__ == "__main__":
