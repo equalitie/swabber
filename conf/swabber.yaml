@@ -7,7 +7,7 @@ bindstrings:
   - tcp://127.0.0.1:22621
 interface: eth+
 backend: iptables_cmd
-logfile: /var/log/swabber.log
+logpath: swabber.log
 
 whitelist:
   - 127.0.0.0/8
