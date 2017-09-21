@@ -42,10 +42,22 @@ NB: On Debian 9, you may need to create the <code>/usr/local/lib/python2.7/dist-
 
 The <code>swabberd</code> file can be used as an init script if you're installing the package by hand.
 
+
+The SystemD service file can be used to manage the swabber daemon. It can be installed as follows:
+
+
+    cp ../initscript/swabberd.service /lib/systemd/system/swabber.service
+
+    systemctl enable swabber
+    systemctl start swabber
+    systemctl status swabber
+
+
+
 The <code>banpub-faker.py</code> example publisher also requires the Tornado Python library which can be installed with:
 
     apt-get install python-tornado
-   
+
 
 iptables interface
 -------------
