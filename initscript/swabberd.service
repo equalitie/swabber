@@ -4,6 +4,8 @@ Description=Swabber Service
 [Service]
 ExecStart=/usr/local/bin/swabberd
 StandardOutput=null
+Restart=always
+RestartSec=3
 
 [Install]
 WantedBy=multi-user.target
