@@ -1,0 +1,10 @@
+[Unit]
+Description=Swabber Service
+
+[Service]
+ExecStart=/usr/local/bin/swabberd
+StandardOutput=null
+
+[Install]
+WantedBy=multi-user.target
+Alias=swabber.service
