@@ -1,0 +1,11 @@
+[Unit]
+Description=Swabber Service
+
+[Service]
+Type=forking
+ExecStart=/usr/local/bin/swabberd
+ExecReload=/bin/kill -HUP $MAINPID
+
+[Install]
+WantedBy=multi-user.target
+Alias=swabber.service
