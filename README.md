@@ -45,6 +45,13 @@ The <code>swabberd</code> file can be used as an init script if you're installin
 
 The SystemD service file can be used to manage the swabber daemon. It can be installed as follows:
 
+    Note: If you already had /etc/init.d/swabberd installed, it is recommended to remove this from
+    all runlevels first.
+
+    update-rc.d -f swabberd remove
+    rm /etc/init.d/swabberd
+
+    Install systemD swabber service:
 
     cp ../initscript/swabberd.service /lib/systemd/system/swabber.service
 
