@@ -127,6 +127,7 @@ class Swabberd(object):
                 if self.cleaner:
                     self.cleaner = BanCleaner(self.config["bantime"], self.config["backend"],
                                               iptables_lock, self.config["interface"])
+                self.banner.start()
                 logging.info("Reloaded config")
 
         signal.signal(signal.SIGTERM, handle_signal)
