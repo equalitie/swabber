@@ -99,7 +99,7 @@ interface: <iptables match>
 -------------
 *iptables and iptables_cmd interfaces only*
 
-This is the interface to issue ban rules for. Can be of the iptables match format- it already defaults to eth+, for example.
+This is the interface to issue ban rules for. Can be of the iptables match format- it already defaults to <code>+</code> which is a wildcard that matches all interface.
 
 backend: hostsfile OR iptables OR iptables_cmd
 -------------
