@@ -113,12 +113,16 @@ class Swabberd(object):
                                  self.config["whitelist"], iptables_lock)
 
         def handle_signal(signum, frame):
-            if signum == signal.SIGTERM:
+            if signum in [signal.SIGINT, signal.SIGTERM]:
                 self.banner.stop_running()
                 if self.config["bantime"]:
                     self.running = False
-                logging.warning("Closing on SIGTERM")
-            elif signum == signal.SIGHUP: 
+                if signum == signal.SIGINT:
+                    logging.warning("Closing on SIGINT (KeyboardInterrupt)")
+                else:
+                    logging.warning("Closing on SIGTERM")
+
+            elif signum == signal.SIGHUP:
                 config = get_config(self.configpath)
                 self.banner.stop_running()
                 self.banner = BanFetcher(self.config["bindstrings"],
@@ -130,6 +134,7 @@ class Swabberd(object):
                 self.banner.start()
                 logging.info("Reloaded config")
 
+        signal.signal(signal.SIGINT, handle_signal)
         signal.signal(signal.SIGTERM, handle_signal)
         signal.signal(signal.SIGHUP, handle_signal)
 
