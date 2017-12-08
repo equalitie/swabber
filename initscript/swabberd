@@ -30,7 +30,7 @@ case "$1" in
 		    ;;
   stop)
   echo -n "Stopping $DESC: "
-  if start-stop-daemon --stop --quiet --oknodo -s HUP --pidfile /var/run/$NAME.pid; then
+  if start-stop-daemon --stop --quiet --pidfile /var/run/$NAME.pid; then
       log_end_msg 0
   else
       log_end_msg 1
@@ -40,7 +40,7 @@ case "$1" in
       status_of_proc -p /var/run/$NAME.pid /usr/bin/$NAME $NAME && exit 0 || exit $?
  ;;
 
-  #reload)
+  reload|force-reload)
   #
   #	If the daemon can reload its config files on the fly
   #	for example by sending it SIGHUP, do it here.
@@ -48,11 +48,11 @@ case "$1" in
   #	If the daemon responds to changes in its config file
   #	directly anyway, make this a do-nothing entry.
   #
-  # echo "Reloading $DESC configuration files."
-  # start-stop-daemon --stop --signal 1 --quiet --pidfile \
-  # /var/run/$NAME.pid --exec $DAEMON
-  #;;
-  restart|force-reload)
+  echo "Reloading $DESC configuration files."
+  start-stop-daemon --stop --signal HUP --quiet --pidfile /var/run/$NAME.pid
+  ;;
+
+  restart)
   #
   #	If the "reload" option is implemented, move the "force-reload"
   #	option to the "reload" entry above. If not, "force-reload" is

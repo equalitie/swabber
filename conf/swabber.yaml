@@ -5,9 +5,11 @@ polltime: 60
 bindstrings:
   - tcp://127.0.0.1:22620
   - tcp://127.0.0.1:22621
-interface: eth+
+# "+" matches all interfaces. To only match eth interfaces
+# use interface filter "eth+"
+interface: +
 backend: iptables_cmd
-logfile: /var/log/swabber.log
+logpath: /var/log/swabber.log
 
 whitelist:
   - 127.0.0.0/8
