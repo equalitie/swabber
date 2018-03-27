@@ -22,7 +22,7 @@ setup(
         "Topic :: Security",
         "Intended Audience :: System Administrators",
         ],
-    scripts = ["swabberd"],
+    scripts = ["bin/swabberd"],
     # Not distributing configuration and init script with the package
     # because data_files is fucking USELESS. Can't rename files, can't
     # address files with a relative path, must have the init script with the

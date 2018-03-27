@@ -23,6 +23,8 @@ The banpub-faker.py script is an example of a ban publisher if you fancy impleme
 
 Installation
 ======
+You can generate a `.deb` with `pip install stdeb && python setup.py --command-packages=stdeb.command bdist_deb`.
+
 Python <= 2.5 will need to also install the json module. python-dev is required to install the dependencies.
 
 The Debian 9 dependencies can be installed via apt:
