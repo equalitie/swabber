@@ -1,0 +1,13 @@
+05634d10897fb9cbcc939729e214db37  usr/bin/swabberd
+208e3fa8685bb45546bffcc3852fbb13  usr/lib/python2.7/dist-packages/swabber-1.4.0.egg-info/PKG-INFO
+2b1e10edf7fcb8190ecf34ddab35ceea  usr/lib/python2.7/dist-packages/swabber-1.4.0.egg-info/SOURCES.txt
+68b329da9893e34099c7d8ad5cb9c940  usr/lib/python2.7/dist-packages/swabber-1.4.0.egg-info/dependency_links.txt
+c794beec22c31084ce9f0f248cadd427  usr/lib/python2.7/dist-packages/swabber-1.4.0.egg-info/requires.txt
+cb74e79911a36b5a8227819bcb13cd93  usr/lib/python2.7/dist-packages/swabber-1.4.0.egg-info/top_level.txt
+6c75eb4b43d10081bd9596e28fbace6f  usr/lib/python2.7/dist-packages/swabber/__init__.py
+b49c8e7b8431a50014d31553a03f9059  usr/lib/python2.7/dist-packages/swabber/bancleaner.py
+1275d2eb45ad841e855836aecfe96150  usr/lib/python2.7/dist-packages/swabber/banfetcher.py
+5283cc3c65a1ddda07a28d681465d6b8  usr/lib/python2.7/dist-packages/swabber/banobjects.py
+36f62af4782657476f8b0d37d7f2577d  usr/lib/python2.7/dist-packages/swabber/hostsfile.py
+2de4f3fa239cef12988cd98300705313  usr/lib/python2.7/dist-packages/swabber/testing.py
+a48216e26b483414f42c1911e37b9a57  usr/share/doc/python-swabber/changelog.Debian.gz

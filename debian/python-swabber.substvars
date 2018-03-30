@@ -1,0 +1,5 @@
+python:Versions=2.7
+python:Provides=python2.7-swabber
+python:Depends=python (<< 2.8), python (>= 2.7), python-ipaddr, python-iptables, python-yaml, python-zmq, python:any, python:any (>= 2.6.6-7~)
+misc:Depends=
+misc:Pre-Depends=

@@ -23,7 +23,10 @@ The banpub-faker.py script is an example of a ban publisher if you fancy impleme
 
 Installation
 ======
-You can generate a `.deb` with `pip install stdeb && python setup.py --command-packages=stdeb.command bdist_deb`.
+You can generate an unsigned `.deb` with `tar --exclude=debian -zcf ../swabber_1.4.0.orig.tar.gz . && debuild  -uc -us`.
+The `debian/` directory was bootstrapped with `stdeb`: `pip install stdeb && python setup.py --command-packages=stdeb.command bdist_deb`.
+(the output goes under a `deb_dist/` directory, and I had to edit out a change to a `setup.cfg` file.)
+The reason for checking `debian/` into git is so we can specify init scripts (stdeb doesn't do this).
 
 Python <= 2.5 will need to also install the json module. python-dev is required to install the dependencies.
 

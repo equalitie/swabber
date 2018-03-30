@@ -1,0 +1,10 @@
+Package: python-swabber
+Source: swabber
+Version: 1.4.0-1
+Architecture: all
+Maintainer: Hugh Nowlan <nosmo@nosmo.me>
+Installed-Size: 53
+Depends: python (<< 2.8), python (>= 2.7), python-ipaddr, python-iptables, python-yaml, python-zmq, python:any (>= 2.6.6-7~)
+Section: python
+Priority: optional
+Description: Pubsub-based host banning interface
